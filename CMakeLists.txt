@@ -18,9 +18,11 @@ endif()
 if (NOT EXISTS ${MATLAB_USER_DIR})
   # if not found, show message and use the default CMake install directory
   message("Matlab user directory not found at ${MATLAB_USER_DIR}. It will be created if intallation directory not changed.")
+elseif (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set (CMAKE_INSTALL_PREFIX "${MATLAB_USER_DIR}" CACHE PATH "Installation directory" FORCE)
 endif()
-set(MATLAB_NLOPT_INSTALL_DIR "${MATLAB_USER_DIR}/nlopt")
-set(MATLAB_NLOPT_INSTALL_DIR ${MATLAB_NLOPT_INSTALL_DIR} CACHE PATH "Installation directory for Matlab-NLopt")
+set(MATLAB_NLOPT_TOOLBOX_DIR "nlopt" CACHE PATH "Installation subdirectory for Matlab-NLopt package")
+set(MATLAB_NLOPT_EXAMPLE_DIR "nlopt" CACHE PATH "Installation subdirectory for Matlab-NLopt examples")
 
 # set global C++ compilation/linking options
 
@@ -29,28 +31,30 @@ find_package(Matlab REQUIRED COMPONENTS MX_LIBRARY)
 
 # Build/find NLopt
 if (BUILD_NLOPT_LIBS) 
-  if (WIN32)
-    include(ExternalProject)
+  if (WIN32) # build only DLL to be placed on @options directory
     set(NLOPT_ROOT "${CMAKE_BINARY_DIR}/nlopt")
-    ExternalProject_Add(nlopt
-                        PREFIX ${NLOPT_ROOT}
-                        GIT_REPOSITORY "https://github.com/stevengj/nlopt.git"
-                        BINARY_DIR "${NLOPT_ROOT}/build"
-                        CMAKE_ARGS
-                          -DCMAKE_BUILD_TYPE=Release
-                          -DNLOPT_CXX:BOOL=OFF
-                          -DBUILD_SHARED_LIBS:BOOL=ON
-                          -DNLOPT_PYTHON:BOOL=OFF
-                          -DNLOPT_OCTAVE:BOOL=OFF
-                          -DNLOPT_MATLAB:BOOL=OFF
-                          -DNLOPT_GUILE:BOOL=OFF
-                          -DNLOPT_SWIG:BOOL=OFF
-                          -DCMAKE_INSTALL_PREFIX=${NLOPT_ROOT}
-                       )
+    if (NOT EXISTS "${NLOPT_ROOT}/build/nlopt.dll") # WIN32 must have it locally
+      include(ExternalProject)
+      ExternalProject_Add(nlopt
+                          PREFIX ${NLOPT_ROOT}
+                          GIT_REPOSITORY "https://github.com/stevengj/nlopt.git"
+                          BINARY_DIR "${NLOPT_ROOT}/build"
+                          CMAKE_ARGS
+                            -DCMAKE_BUILD_TYPE=Release
+                            -DNLOPT_CXX:BOOL=OFF
+                            -DBUILD_SHARED_LIBS:BOOL=ON
+                            -DNLOPT_PYTHON:BOOL=OFF
+                            -DNLOPT_OCTAVE:BOOL=OFF
+                            -DNLOPT_MATLAB:BOOL=OFF
+                            -DNLOPT_GUILE:BOOL=OFF
+                            -DNLOPT_SWIG:BOOL=OFF
+                            -DCMAKE_INSTALL_PREFIX=${NLOPT_ROOT}
+                        )
+    endif()
     # set include & library path
-    set(NLOPT_INCLUDE_DIR,"${NLOPT_ROOT}/include")
-    set(NLOPT_LIBRARY,"${NLOPT_ROOT}/lib/nlopt.lib")
-  else() # 
+    set(NLOPT_INCLUDE_DIR "${NLOPT_ROOT}/include")
+    set(NLOPT_LIBRARY "${NLOPT_ROOT}/lib/nlopt.lib")
+  else()
     find_package(NLopt) # if installed sets NLOPT_FOUND, NLOPT_INCLUDE_DIR, & NLOPT_LIBRARY
     if (NOT NLOPT_FOUND) # install the full package with default options (sans )
 
@@ -63,27 +67,24 @@ if (BUILD_NLOPT_LIBS)
                             -DCMAKE_BUILD_TYPE=Release
                             -DNLOPT_CXX:BOOL=OFF
                             -DBUILD_SHARED_LIBS:BOOL=ON
-                         )
+                        )
     endif()
   endif()
 else()
   find_package(NLopt REQUIRED) # sets NLOPT_INCLUDE_DIR & NLOPT_LIBRARY
 endif()
 
+# globally include directories containing the C++ header files of external libraries
 include_directories(${NLOPT_INCLUDE_DIR})
 include_directories("mexutils/include")
 
 # set globally to ignore MSVC warning on STD library calls
 if(WIN32 AND MSVC)
-  # add_compile_options(/wd4996)
+  add_compile_options(/wd4996)
 endif()
 
-
-# force to change the CMake install folder
-set(CMAKE_INSTALL_PREFIX ${MEXCPP_DEMO_INSTALL_DIR} CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
-
-# add the install targets
-install(DIRECTORY +nlopt DESTINATION .)
+# add the install procedures
+install(DIRECTORY +nlopt DESTINATION ${MATLAB_NLOPT_TOOLBOX_DIR} FILES_MATCHING PATTERN "*.m" PATTERN) # copy all the package m-files
 
 # first we can indicate the documentation build as an option and set it to ON by default
 # option(BUILD_DOC "Build documentation" ON)
@@ -111,4 +112,5 @@ install(DIRECTORY +nlopt DESTINATION .)
 
 
 # traverse subfolders (note mexutils not included as it is a header only library)
-# add_subdirectory("+nlopt")
+add_subdirectory("+nlopt")
+add_subdirectory("examples")
