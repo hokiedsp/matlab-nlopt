@@ -18,6 +18,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
   mexObjectHandler<mexNLopt>(nlhs, plhs, nrhs, prhs);
 }
 
+// prototypes for the functions to be evaluated
+struct mexObjectiveFunctionData { mxArray *prhs[2], *f; nlopt_opt &opt; };
+static double mexObjectiveFunction(unsigned n, const double *x, double *gradient, void *d_);
+static void mexObjectiveHessianFunction(unsigned n, const double *x, const double *v, double *vpre, void *d_);
+
 // The class that we are interfacing to
 class mexNLopt
 {
@@ -345,6 +350,44 @@ private:
       nlopt_set_initial_step(opt, mxGetPr(prhs[0]));
   }
 
+  // OPTIMIZATION ROUTINES
+  void fminunc(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+  { // x = fminunc(fun,x0)
+    unsigned d = nlopt_get_dimension(opt);
+    mexObjectiveFunctionData data = {{(mxArray*) prhs[0], mxCreateDoubleMatrix(d,1,mxREAL)}, // fun, x
+                                     NULL, // f
+                                     opt}; // nlopt_opt
+    const mxArray *mxFun = prhs[0]; // prevalidated function_handle
+    if (false) // if Hessian given
+    {
+      // CHECK(mxIsChar(mx) || mxIsFunctionHandle(mx),
+      //       "pre must contain function handles or function names");
+      //   dpre.prhs[0] = mx;
+      //   strcpy(dpre.f, "feval");
+      //   dpre.nrhs = 3;
+      //   dpre.xrhs = 1;
+      // dpre.verbose = d.verbose > 2;
+      // dpre.opt = opt;
+      // dpre.neval = 0;
+      // dpre.prhs[dpre.xrhs] = d.prhs[d.xrhs];
+      // dpre.prhs[d.xrhs + 1] = mxCreateDoubleMatrix(1, n, mxREAL);
+      // d.dpre = &dpre;
+      //   nlopt_set_precond_min_objective(opt, user_function, user_pre, &d);
+    }
+    else // else just objective function
+    {
+      nlopt_set_min_objective(opt, mexObjectiveFunction, &data);
+    }
+
+    plhs[0] = mxDuplicateArray(prhs[1]); // create output x vector from prevalidated initial x
+    double *x = mxGetPr(plhs[0]);   // get the vector
+    double fval;
+    if (nlopt_optimize(opt, x, &fval)<0)
+    {
+      throw mexRuntimeError(mexNLopt::get_classname() + ":fminuncFailed", "nlopt_optimize() failed.");
+    }
+  }
+
   // NLOPT_EXTERN(nlopt_result) nlopt_set_local_optimizer(nlopt_opt opt,
   // 						    const nlopt_opt local_opt);
 
@@ -428,6 +471,7 @@ private:
 
 const std::unordered_map<std::string, mexNLopt::action_fcn> mexNLopt::action_map =
     {
+        {"fminunc", &mexNLopt::fminunc},
         {"setFunctionStopValue", &mexNLopt::setStopVal},
         {"setFunctionAbsoluteTolerance", &mexNLopt::setFTolAbs},
         {"setMaxFunctionEvaluations", &mexNLopt::setMaxEval},
@@ -453,3 +497,62 @@ const std::unordered_map<std::string, mexNLopt::const_action_fcn> mexNLopt::cons
         {"getStepAbsoluteTolerance", &mexNLopt::getXTolAbs},
         {"getStepRelativeTolerance", &mexNLopt::getXTolRel},
         {"getVectorStorage", &mexNLopt::getVectorStorage}};
+
+static double mexObjectiveFunction(unsigned n, const double *x, double *gradient, void *data_)
+{
+  mexObjectiveFunctionData &data = *(mexObjectiveFunctionData *)data_;
+  mxArray *plhs[2] = {NULL, NULL};
+  bool failed = false;
+
+  // copy the given x to input argument mxArray array
+  std::copy_n(x, n, mxGetPr(data.prhs[1]));
+  
+  mxArray *MException = mexCallMATLABWithTrap(gradient ? 2 : 1, plhs, 2, data.prhs, "feval");
+  if (MException || !mxIsDouble(plhs[0]) || mxIsComplex(plhs[0]) || !mxIsScalar(plhs[0])) // trapped an error
+  {
+    failed = true;
+    goto objfcn_end;
+  }
+
+  double f = mxGetScalar(plhs[0]);
+  if (data.f) mxDestroyArray(data.f);
+  data.f = plhs[0];
+
+  if (gradient)
+  {
+    if (!mxIsDouble(plhs[1]) || mxIsComplex(plhs[1]) || !(mxGetM(plhs[1]) == 1 || mxGetN(plhs[1]) == 1) || mxGetNumberOfElements(plhs[1])!=n)
+    {
+      failed = true;
+      goto objfcn_end;
+    }
+    
+    std::copy_n(mxGetPr(plhs[1]), n, gradient);
+    mxDestroyArray(plhs[1]);
+  }
+
+objfcn_end:
+  // if (d->verbose)
+  //   mexPrintf("nlopt_optimize eval #%d: %g\n", d->neval, f);
+  if (failed || mxIsNaN(f))
+    nlopt_force_stop(data.opt);
+  return f;
+}
+
+// static void mexHessianFunction(unsigned n, const double *x, const double *v, double *vpre, void *d_)
+// {
+//   user_function_data *d = ((user_function_data *)d_)->dpre;
+//   d->plhs[0] = d->plhs[1] = NULL;
+//   memcpy(mxGetPr(d->prhs[d->xrhs]), x, n * sizeof(double));
+//   memcpy(mxGetPr(d->prhs[d->xrhs + 1]), v, n * sizeof(double));
+
+//   CHECK0(0 == mexCallMATLAB(1, d->plhs, d->nrhs, d->prhs, d->f),
+//          "error calling user function");
+
+//   CHECK0(mxIsDouble(d->plhs[0]) && !mxIsComplex(d->plhs[0]) && (mxGetM(d->plhs[0]) == 1 || mxGetN(d->plhs[0]) == 1) && mxGetM(d->plhs[0]) * mxGetN(d->plhs[0]) == n,
+//          "vpre vector from user function is the wrong size");
+//   memcpy(vpre, mxGetPr(d->plhs[0]), n * sizeof(double));
+//   mxDestroyArray(d->plhs[0]);
+//   d->neval++;
+//   if (d->verbose)
+//     mexPrintf("nlopt_optimize precond eval #%d\n", d->neval);
+// }

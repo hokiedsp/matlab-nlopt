@@ -45,9 +45,8 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
          obj.mexfcn(obj, algorithm, dim);
          
          % set properties
-         if nargin>2
-            obj.set(varargin{:});
-         end
+         obj.set('FunctionAbsoluteTolerance',1e-6,'StepAbsoluteTolerance',1e-6,...
+            'MaxFunctionEvaluations',100*dim,varargin{:});
       end
       
       function delete(obj)
@@ -64,11 +63,13 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
       end
       function varargout = getAlgorithms()
          names = nlopt.options.mexfcn('getAlgorithms',nargout==0);
+         names(:) = sortrows(names);
          if nargout > 0
             varargout{1} = names;
          else
             tbl = cell2table(names,'VariableNames',{'Name','Description'});
             disp(tbl);
+            disp('For the details of these algorithm, see <a href="https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/">the official NLopt Documentation</a>');
          end
       end
    end
@@ -163,7 +164,7 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
          obj.mexfcn(obj,'setStepAbsoluteTolerance',val);
       end
       function val = get.MaxFunctionEvaluations(obj) % MaxEval
-         val = obj.mexfcn(obj,'getMaxEvaluationDuration');
+         val = obj.mexfcn(obj,'getMaxFunctionEvaluations');
          if val<=0
             val = 'off';
          end
@@ -175,7 +176,7 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
          catch
             validateattributes(val,{'double'},{'scalar','positive','finite'});
          end
-         obj.mexfcn(obj,'setMaxEvaluationDuration',val);
+         obj.mexfcn(obj,'setMaxFunctionEvaluations',val);
       end
       function val = get.MaxEvaluationDuration(obj) % MaxTime
          val = obj.mexfcn(obj,'getMaxEvaluationDuration');
@@ -228,6 +229,27 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
       function set.InitialStepSize(obj,val)
          validateattributes(val,{'double'},{'scalar','positive','finite'});
          obj.mexfcn(obj,'setInitialStepSize',val);
+      end
+   end
+   
+   methods (Hidden)
+      function varargout = fminunc(obj,fun,x0)
+         narginchk(3,3);
+         nargoutchk(0,6);
+         if ~isscalar(obj)
+            error('Cannot run fminunc with non-scalar nlopt-options array.');
+         end
+         if ~isa(fun,'function_handle')
+            error('FUN must be a function handle.');
+         end
+         validateattributes(x0,{'double'},{'vector','numel',obj.Dimension,'real','finite'});
+         varargout{1} = obj.mexfcn(obj,'fminunc',fun,x0);
+         if nargout>1
+            varargout{2} = fun(varargout{1});
+            if nargout>2
+               error('not supported yet.');
+            end
+         end
       end
    end
 end
