@@ -1,21 +1,53 @@
-classdef (Abstract) options < matlab.mixin.Copyable
-%nlopt.options   nlopt options class
-%
-%
-%   See also 
+classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.CustomDisplay
+   %nlopt.options   nlopt options class
+   %
+   %
+   %   See also
+   
+   properties (Dependent,SetAccess=private)
+      Algorithm
+      Dimension
+   end
+   properties (Dependent)
+      FunctionStopValue   % StopVal
+      FunctionRelativeTolerance % FTolRel
+      StepRelativeTolerance % XTolRel
+      FunctionAbsoluteTolerance % FTolAbs
+      StepAbsoluteTolerance % XTolAbs
+      MaxFunctionEvaluations % MaxFunEvals
+      MaxEvaluationDuration  %MaxEvalTime
+      Population
+      VectorStorage
+      InitialStepSize
+   end
+   
+   
+   % // Hessian() const {}
+   % // HessFcn() const {}
+   % // HessianFcn() const {}
+   % // OutputFcn() const {}
+   
    
    properties (Access = protected, Hidden, NonCopyable, Transient)
       backend % Handle to the backend C++ class instance
    end
    
-   methods (Access = protected, Static, Hidden, Abstract)
+   methods (Access = protected, Static, Hidden)
       varargout = mexfcn(varargin) % mexCopyableObjectHandler mex function, defined by derived class
    end
    
    methods
-      function obj = options(varargin)
+      function obj = options(algorithm, dim, varargin)
+         validateattributes(algorithm,{'char'},{'row'},mfilename,'algorithm');
+         validateattributes(dim,{'double'},{'scalar','integer','positive'},mfilename,'dim');
+         
          % instantiate mex backend
-         obj.mexfcn(obj, varargin{:});
+         obj.mexfcn(obj, algorithm, dim);
+         
+         % set properties
+         if nargin>2
+            obj.set(varargin{:});
+         end
       end
       
       function delete(obj)
@@ -25,14 +57,177 @@ classdef (Abstract) options < matlab.mixin.Copyable
          end
       end
    end
+   
+   methods (Static)
+      function ver = getNLoptVersion()
+         ver = nlopt.options.mexfcn('getNLoptVersion');
+      end
+      function varargout = getAlgorithms()
+         names = nlopt.options.mexfcn('getAlgorithms',nargout==0);
+         if nargout > 0
+            varargout{1} = names;
+         else
+            tbl = cell2table(names,'VariableNames',{'Name','Description'});
+            disp(tbl);
+         end
+      end
+   end
+   
    methods(Access = protected)
       % Override copyElement method:
       function cpObj = copyElement(obj)
          % Make a shallow copy of all four properties
          cpObj = copyElement@matlab.mixin.Copyable(obj);
-
+         
          % Make a deep copy of the C++ object
          obj.mexfcn(obj, 'copy', cpObj);
+      end
+   end
+   
+   methods
+      function val = get.Algorithm(obj)
+         val = obj.mexfcn(obj,'getAlgorithm');
+      end
+      function val = get.Dimension(obj)
+         val = obj.mexfcn(obj,'getDimension');
+      end
+      function val = get.FunctionStopValue(obj)   % StopVal
+         val = obj.mexfcn(obj,'getFunctionStopValue');
+      end
+      function set.FunctionStopValue(obj,val)
+         validateattributes(val,{'double'},{'scalar','nonnan'});
+         obj.mexfcn(obj,'setFunctionStopValue',val);
+      end
+      function val = get.FunctionRelativeTolerance(obj) % FTolRel
+         val = obj.mexfcn(obj,'getFunctionRelativeTolerance');
+         if val<=0
+            val = 'off';
+         end
+      end
+      function set.FunctionRelativeTolerance(obj,val)
+         try
+            validatestring(val,{'off'});
+            val = 0;
+         catch
+            validateattributes(val,{'double'},{'scalar','positive','finite'});
+         end
+         obj.mexfcn(obj,'setFunctionRelativeTolerance',val);
+      end
+      function val = get.StepRelativeTolerance(obj) % FTolRel
+         val = obj.mexfcn(obj,'getStepRelativeTolerance');
+         if val<=0
+            val = 'off';
+         end
+      end
+      function set.StepRelativeTolerance(obj,val) % XTolRel
+         try
+            validatestring(val,{'off'});
+            val = 0;
+         catch
+            validateattributes(val,{'double'},{'scalar','positive','finite'});
+         end
+         obj.mexfcn(obj,'setStepRelativeTolerance',val);
+      end
+      function val = get.FunctionAbsoluteTolerance(obj) % FTolAbs
+         val = obj.mexfcn(obj,'getFunctionAbsoluteTolerance');
+         if val<=0
+            val = 'off';
+         end
+      end
+      function set.FunctionAbsoluteTolerance(obj,val)
+         try
+            validatestring(val,{'off'});
+            val = 0;
+         catch
+            validateattributes(val,{'double'},{'scalar','positive','finite'});
+         end
+         obj.mexfcn(obj,'setFunctionAbsoluteTolerance',val);
+      end
+      function val = get.StepAbsoluteTolerance(obj) % XTolAbs
+         val = obj.mexfcn(obj,'getStepAbsoluteTolerance');
+         if isscalar(val) && val<=0
+            val = 'off';
+         end
+      end
+      function set.StepAbsoluteTolerance(obj,val)
+         try
+            validatestring(val,{'off'});
+            val = 0;
+         catch
+            if isscalar(val)
+               validateattributes(val,{'double'},{'scalar','positive','finite'});
+            else
+               validateattributes(val,{'double'},{'vector','numel',obj.Dimension,'nonnegative','finite'});
+            end
+         end
+         obj.mexfcn(obj,'setStepAbsoluteTolerance',val);
+      end
+      function val = get.MaxFunctionEvaluations(obj) % MaxEval
+         val = obj.mexfcn(obj,'getMaxEvaluationDuration');
+         if val<=0
+            val = 'off';
+         end
+      end
+      function set.MaxFunctionEvaluations(obj,val)
+         try
+            validatestring(val,{'off'});
+            val = 0;
+         catch
+            validateattributes(val,{'double'},{'scalar','positive','finite'});
+         end
+         obj.mexfcn(obj,'setMaxEvaluationDuration',val);
+      end
+      function val = get.MaxEvaluationDuration(obj) % MaxTime
+         val = obj.mexfcn(obj,'getMaxEvaluationDuration');
+         if val<=0
+            val = 'off';
+         end
+      end
+      function set.MaxEvaluationDuration(obj,val)
+         try
+            validatestring(val,{'off'});
+            val = 0;
+         catch
+            validateattributes(val,{'double'},{'scalar','positive','finite'});
+         end
+         obj.mexfcn(obj,'setMaxEvaluationDuration',val);
+      end
+      function val = get.Population(obj)
+         val = obj.mexfcn(obj,'getMaxEvaluationDuration');
+         if val==0
+            val = 'auto';
+         end
+      end
+      function set.Population(obj,val)
+         try
+            validatestring(val,{'auto'})
+            val = 0;
+         catch
+            validateattributes(val,{'double'},{'scalar','positive','integer'});
+         end
+         obj.mexfcn(obj,'setVectorStorage',val);
+      end
+      function val = get.VectorStorage(obj)
+         val = obj.mexfcn(obj,'getVectorStorage');
+         if val==0
+            val = 'auto';
+         end
+      end
+      function set.VectorStorage(obj,val)
+         try
+            validatestring(val,{'auto'})
+            val = 0;
+         catch
+            validateattributes(val,{'double'},{'scalar','positive','integer'});
+         end
+         obj.mexfcn(obj,'setVectorStorage',val);
+      end
+      function val = get.InitialStepSize(obj)
+         val = obj.mexfcn(obj,'getInitialStepSize');
+      end
+      function set.InitialStepSize(obj,val)
+         validateattributes(val,{'double'},{'scalar','positive','finite'});
+         obj.mexfcn(obj,'setInitialStepSize',val);
       end
    end
 end
