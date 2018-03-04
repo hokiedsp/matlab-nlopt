@@ -1,33 +1,39 @@
 function varargout = fminunc(fun,x0,options)
 %NLOPT.FMINUNC   Find minimum of unconstrained multivariable function
-% x = fminunc(fun,x0) starts at the point x0 and attempts to find a minimum
-% x of the function described in fun. The point x0 can be a scalar, vector,
-% or matrix.
+%   x = nlopt.fminunc(fun,x0) starts at the point x0 and attempts to find a
+%   minimum x of the objective function given as a function_handle in fun.
+%   The point x0 can be a scalar or vector.
 %
-%     Note:   Passing Extra Parameters explains how to pass extra
-%     parameters to the objective function and nonlinear constraint
-%     functions, if necessary.
+%   The objective function must have the form:
 %
-%     fminunc is for nonlinear problems without constraints. If your
-%     problem has constraints, generally use fmincon. See Optimization
-%     Decision Table.
+%      f = fun(x) or
+%      [f,df] = fun(x)
 %
-% x = fminunc(fun,x0,options) minimizes fun with the optimization options
-% specified in options. Use optimoptions to set these options.
+%   where f is the function value evaluated at x and df is the gradient
+%   of the function at x. If the gradient is provided, it uses 'ld_lbfgs'
+%   algorithm. If the derivative is not provided, it uses 'ld_neldermead'
+%   algorithm. See nlopt.getAlgorithms() to get the complete list of
+%   available algorithms.
 %
-% [x,fval] = fminunc(...), for any syntax, returns the value of the
-% objective function fun at the solution x.
+%   x = nlopt.fminunc(fun,x0,options) minimizes fun with the optimization
+%   options specified in options. Use nlopt.options to set these options.
 %
-% [x,fval,exitflag,output] = fminunc(...) additionally returns a value
-% exitflag that describes the exit condition of fminunc, and a structure
-% output with information about the optimization process.
+%   [x,fval] = fminunc(...) returns the value of the objective function fun
+%   at the solution x.
 %
-% [x,fval,exitflag,output,grad,hessian] = fminunc(...) additionally
-% returns:
+%   [x,fval,exitflag,output] = fminunc(...) additionally returns a value
+%   exitflag that describes the exit condition of fminunc, and a structure
+%   output with information about the optimization process.
 %
-%     grad — Gradient of fun at the solution x.
+%   [x,fval,exitflag,output,grad,hessian] = fminunc(...) additionally
+%   returns:
 %
-%     hessian — Hessian of fun at the solution x. See fminunc Hessian.
+%      grad    - Gradient of fun at the solution x. Empty if FUN does not
+%                return gradient
+%      hessian - Hessian of fun at the solution x. Empty if HessianFun is
+%                not given.
+%
+%   See also: nlopt.getAlgorithms, nlopt.options, nlopt.fmincon
 
 narginchk(2,3);
 nargoutchk(0,6);

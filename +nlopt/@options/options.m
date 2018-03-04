@@ -1,8 +1,8 @@
 classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.CustomDisplay
-   %nlopt.options   nlopt options class
-   %
-   %
-   %   See also
+%nlopt.options   NLopt option class
+%
+%
+%   See also
    
    properties (Dependent,SetAccess=private)
       Algorithm
@@ -253,12 +253,9 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
             error('FUN must be a function handle.');
          end
          validateattributes(x0,{'double'},{'vector','numel',obj.Dimension,'real','finite'});
-         varargout{1} = obj.mexfcn(obj,'fminunc',fun,x0);
-         if nargout>1
-            varargout{2} = fun(varargout{1});
-            if nargout>2
-               error('not supported yet.');
-            end
+         varargout{1:nargout} = obj.mexfcn(obj,'fminunc',fun,x0);
+         if nargout>3
+            varargout{4} = struct('funccount',varargout{4},'Algorithm',obj.Algorithm);
          end
       end
    end
