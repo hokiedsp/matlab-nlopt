@@ -8,12 +8,13 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
       Algorithm
       Dimension
    end
+   
    properties (Dependent)
-      FunctionStopValue   % StopVal
+      ObjectiveLimit   % StopVal
       FunctionRelativeTolerance % FTolRel
       StepRelativeTolerance % XTolRel
-      FunctionAbsoluteTolerance % FTolAbs
-      StepAbsoluteTolerance % XTolAbs
+      FunctionTolerance % FTolAbs
+      StepTolerance % XTolAbs
       MaxFunctionEvaluations % MaxFunEvals
       MaxEvaluationDuration  %MaxEvalTime
       Population
@@ -21,13 +22,16 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
       InitialStepSize
    end
    
+   properties
+      Display % 
+      OutputFun % function_handle withs signature: stop = outfun(x,optimValues,state)
+   end
    
    % // Hessian() const {}
    % // HessFcn() const {}
    % // HessianFcn() const {}
    % // OutputFcn() const {}
-   
-   
+      
    properties (Access = protected, Hidden, NonCopyable, Transient)
       backend % Handle to the backend C++ class instance
    end
@@ -45,7 +49,7 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
          obj.mexfcn(obj, algorithm, dim);
          
          % set properties
-         obj.set('FunctionAbsoluteTolerance',1e-6,'StepAbsoluteTolerance',1e-6,...
+         obj.set('FunctionTolerance',1e-6,'StepTolerance',1e-6,...
             'MaxFunctionEvaluations',100*dim,varargin{:});
       end
       
@@ -92,10 +96,10 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
       function val = get.Dimension(obj)
          val = obj.mexfcn(obj,'getDimension');
       end
-      function val = get.FunctionStopValue(obj)   % StopVal
+      function val = get.ObjectiveLimit(obj)   % StopVal
          val = obj.mexfcn(obj,'getFunctionStopValue');
       end
-      function set.FunctionStopValue(obj,val)
+      function set.ObjectiveLimit(obj,val)
          validateattributes(val,{'double'},{'scalar','nonnan'});
          obj.mexfcn(obj,'setFunctionStopValue',val);
       end
@@ -129,13 +133,13 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
          end
          obj.mexfcn(obj,'setStepRelativeTolerance',val);
       end
-      function val = get.FunctionAbsoluteTolerance(obj) % FTolAbs
+      function val = get.FunctionTolerance(obj) % FTolAbs
          val = obj.mexfcn(obj,'getFunctionAbsoluteTolerance');
          if val<=0
             val = 'off';
          end
       end
-      function set.FunctionAbsoluteTolerance(obj,val)
+      function set.FunctionTolerance(obj,val)
          try
             validatestring(val,{'off'});
             val = 0;
@@ -144,13 +148,13 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
          end
          obj.mexfcn(obj,'setFunctionAbsoluteTolerance',val);
       end
-      function val = get.StepAbsoluteTolerance(obj) % XTolAbs
+      function val = get.StepTolerance(obj) % XTolAbs
          val = obj.mexfcn(obj,'getStepAbsoluteTolerance');
          if isscalar(val) && val<=0
             val = 'off';
          end
       end
-      function set.StepAbsoluteTolerance(obj,val)
+      function set.StepTolerance(obj,val)
          try
             validatestring(val,{'off'});
             val = 0;
@@ -229,6 +233,12 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
       function set.InitialStepSize(obj,val)
          validateattributes(val,{'double'},{'scalar','positive','finite'});
          obj.mexfcn(obj,'setInitialStepSize',val);
+      end
+      
+      function set.OutputFun(obj,val)
+         % stop = outfun(x,optimValues,state);
+         validateattributes(val,{'function_handle'},{'scalar'});
+         obj.OutputFcn = val;
       end
    end
    

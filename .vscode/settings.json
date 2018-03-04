@@ -46,6 +46,7 @@
     "xstddef": "cpp",
     "xtr1common": "cpp",
     "map": "cpp",
-    "unordered_map": "cpp"
+    "unordered_map": "cpp",
+    "tuple": "cpp"
   }
 }
