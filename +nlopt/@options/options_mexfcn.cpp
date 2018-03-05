@@ -98,7 +98,7 @@ mxArray *mexNLopt::getNLoptVersion()
 std::string mexNLopt::get_algorithm_name_string(nlopt_algorithm a)
 {
   if (a == NLOPT_NUM_ALGORITHMS)
-    throw mexRuntimeError(mexNLopt::get_classname() + ":invalidAlgorithm", "Invalid algorithm name.");
+    throw mexRuntimeError("invalidAlgorithm", "Invalid algorithm name.");
   std::string name = nlopt_algorithm_idstrs[(int)a] + 6;
   std::for_each(name.begin(), name.end(), [](auto &ch) { ch = tolower(ch); });
   return name;
@@ -118,7 +118,7 @@ mxArray *mexNLopt::get_algorithm_name(nlopt_algorithm a)
 mxArray *mexNLopt::get_algorithm_desc(nlopt_algorithm a)
 {
   if (a == NLOPT_NUM_ALGORITHMS)
-    throw mexRuntimeError(mexNLopt::get_classname() + ":invalidAlgorithm", "Invalid algorithm name.");
+    throw mexRuntimeError("invalidAlgorithm", "Invalid algorithm name.");
   return mxCreateString(nlopt_algorithm_name(a));
 }
 
@@ -154,7 +154,7 @@ nlopt_algorithm mexNLopt::find_algorithm_by_name(const mxArray *mxStr)
 
   // not found
   if (algo == NLOPT_NUM_ALGORITHMS)
-    throw mexRuntimeError(mexNLopt::get_classname() + ":invalidAlgorithm", "Invalid algorithm name.");
+    throw mexRuntimeError("invalidAlgorithm", "Invalid algorithm name.");
 
   return algo;
 }
@@ -172,7 +172,7 @@ void mexNLopt::init(const mxArray *mxAlgorithm, const mxArray *mxDim)
 
   opt = nlopt_create(alg, dim);
   if (opt == NULL)
-    throw mexRuntimeError(mexNLopt::get_classname() + ":failedNLoptCreation", "nlopt_create() failed to create a new nlopt object.");
+    throw mexRuntimeError("failedNLoptCreation", "nlopt_create() failed to create a new nlopt object.");
 }
 
 void mexNLopt::getXTolAbs(MEX_ACTION_ARGUMENTS) const
@@ -180,7 +180,7 @@ void mexNLopt::getXTolAbs(MEX_ACTION_ARGUMENTS) const
   unsigned d = nlopt_get_dimension(opt);
   std::vector<double> tol(d);
   if (nlopt_get_xtol_abs(opt, tol.data()) < 0)
-    throw mexRuntimeError(mexNLopt::get_classname() + ":failedNLoptGet", "nlopt_get_xtol_abs() failed.");
+    throw mexRuntimeError("failedNLoptGet", "nlopt_get_xtol_abs() failed.");
   double tol0 = tol[0];
   if (d == 1 || std::all_of(tol.begin() + 1, tol.end(), [tol0](const double t) { return t == tol0; }))
     plhs[0] = mxCreateDoubleScalar(tol0);
@@ -198,7 +198,7 @@ void mexNLopt::getInitialStep(MEX_ACTION_ARGUMENTS) const
   std::vector<double> steps(d);
   std::vector<double> x0(d, 1.0);
   if (nlopt_get_initial_step(opt, x0.data(), steps.data()) < 0)
-    throw mexRuntimeError(mexNLopt::get_classname() + ":failedNLoptGet", "nlopt_get_initial_step() failed.");
+    throw mexRuntimeError("failedNLoptGet", "nlopt_get_initial_step() failed.");
   double dx0 = steps[0];
   if (d == 1 || std::all_of(steps.begin() + 1, steps.end(), [dx0](const double dx) { return dx == dx0; }))
     plhs[0] = mxCreateDoubleScalar(dx0);
@@ -215,7 +215,7 @@ mxArray *mexNLopt::getInitialStep(const mxArray *x0) const
   unsigned d = nlopt_get_dimension(opt);
   std::vector<double> steps(d);
   if (nlopt_get_initial_step(opt, mxGetPr(x0), steps.data()) < 0)
-    throw mexRuntimeError(mexNLopt::get_classname() + ":failedNLoptGet", "nlopt_get_initial_step() failed.");
+    throw mexRuntimeError("failedNLoptGet", "nlopt_get_initial_step() failed.");
   double dx0 = steps[0];
   if (d == 1 || std::all_of(steps.begin() + 1, steps.end(), [dx0](const double dx) { return dx == dx0; }))
     return mxCreateDoubleScalar(dx0);
@@ -281,11 +281,11 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
   switch (res) // take care of fatal failures
   {
   case NLOPT_FAILURE:
-    throw mexRuntimeError(mexNLopt::get_classname() + ":fminunc:failedGeneric", "nlopt_optimize() failed.");
+    throw mexRuntimeError("fminunc:failedGeneric", "nlopt_optimize() failed.");
   case NLOPT_INVALID_ARGS:
-    throw mexRuntimeError(mexNLopt::get_classname() + ":fminunc:invalidArgument", "Invalid optimization options.");
+    throw mexRuntimeError("fminunc:invalidArgument", "Invalid optimization options.");
   case NLOPT_OUT_OF_MEMORY:
-    throw mexRuntimeError(mexNLopt::get_classname() + ":fminunc:outOfMemory", "Insufficient memory for the job.");
+    throw mexRuntimeError("fminunc:outOfMemory", "Insufficient memory for the job.");
   case NLOPT_FORCED_STOP:
     if (data.lasterror) // something went wrong while calling Matlab
       throw mexRuntimeError(mexGetString(mxGetProperty(data.lasterror, 0, "identifier")), mexGetString(mxGetProperty(data.lasterror, 0, "message")));
