@@ -30,49 +30,67 @@ set(MATLAB_NLOPT_EXAMPLE_DIR "nlopt" CACHE PATH "Installation subdirectory for M
 find_package(Matlab REQUIRED COMPONENTS MX_LIBRARY)
 
 # Build/find NLopt
+add_library(nloptlib SHARED IMPORTED)
 if (BUILD_NLOPT_LIBS) 
   if (WIN32) # build only DLL to be placed on @options directory
     set(NLOPT_ROOT "${CMAKE_BINARY_DIR}/nlopt")
     if (NOT EXISTS "${NLOPT_ROOT}/build/nlopt.dll") # WIN32 must have it locally
-      include(ExternalProject)
-      ExternalProject_Add(nlopt
-                          PREFIX ${NLOPT_ROOT}
-                          GIT_REPOSITORY "https://github.com/stevengj/nlopt.git"
-                          BINARY_DIR "${NLOPT_ROOT}/build"
-                          CMAKE_ARGS
-                            -DCMAKE_BUILD_TYPE=Release
-                            -DNLOPT_CXX:BOOL=OFF
-                            -DBUILD_SHARED_LIBS:BOOL=ON
-                            -DNLOPT_PYTHON:BOOL=OFF
-                            -DNLOPT_OCTAVE:BOOL=OFF
-                            -DNLOPT_MATLAB:BOOL=OFF
-                            -DNLOPT_GUILE:BOOL=OFF
-                            -DNLOPT_SWIG:BOOL=OFF
-                            -DCMAKE_INSTALL_PREFIX=${NLOPT_ROOT}
-                        )
+      # Download and unpack nlopt at configure time
+      configure_file(CMakeLists.txt.win32.in nlopt/CMakeLists.txt)
+      execute_process(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}"  .
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/nlopt" )
+      execute_process(COMMAND "${CMAKE_COMMAND}" --build .
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/nlopt" )
+      # include(ExternalProject)
+      # ExternalProject_Add(nlopt
+      #                     PREFIX ${NLOPT_ROOT}
+      #                     GIT_REPOSITORY "https://github.com/stevengj/nlopt.git"
+      #                     BINARY_DIR "${NLOPT_ROOT}/build"
+      #                     CMAKE_ARGS
+      #                       -DCMAKE_BUILD_TYPE=Release
+      #                       -DNLOPT_CXX:BOOL=OFF
+      #                       -DBUILD_SHARED_LIBS:BOOL=ON
+      #                       -DNLOPT_PYTHON:BOOL=OFF
+      #                       -DNLOPT_OCTAVE:BOOL=OFF
+      #                       -DNLOPT_MATLAB:BOOL=OFF
+      #                       -DNLOPT_GUILE:BOOL=OFF
+      #                       -DNLOPT_SWIG:BOOL=OFF
+      #                       -DCMAKE_INSTALL_PREFIX=${NLOPT_ROOT}
+      #                   )
     endif()
+
     # set include & library path
     set(NLOPT_INCLUDE_DIR "${NLOPT_ROOT}/include")
     set(NLOPT_LIBRARY "${NLOPT_ROOT}/lib/nlopt.lib")
+
+message("NLOPT_LIBRAR=${NLOPT_LIBRARY}")
+
   else()
     find_package(NLopt) # if installed sets NLOPT_FOUND, NLOPT_INCLUDE_DIR, & NLOPT_LIBRARY
     if (NOT NLOPT_FOUND) # install the full package with default options (sans )
 
-      include(ExternalProject)
-      ExternalProject_Add(nlopt
-                          PREFIX ${NLOPT_ROOT}
-                          GIT_REPOSITORY "https://github.com/stevengj/nlopt.git"
-                          BINARY_DIR "${NLOPT_ROOT}/build"
-                          CMAKE_ARGS
-                            -DCMAKE_BUILD_TYPE=Release
-                            -DNLOPT_CXX:BOOL=OFF
-                            -DBUILD_SHARED_LIBS:BOOL=ON
-                        )
+    configure_file(CMakeLists.txt.in nlopt/CMakeLists.txt)
+    execute_process(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}"  .
+      WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/nlopt" )
+    execute_process(COMMAND "${CMAKE_COMMAND}" --build .
+      WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/nlopt" )
+
+      # include(ExternalProject)
+      # ExternalProject_Add(nlopt
+      #                     PREFIX ${NLOPT_ROOT}
+      #                     GIT_REPOSITORY "https://github.com/stevengj/nlopt.git"
+      #                     BINARY_DIR "${NLOPT_ROOT}/build"
+      #                     CMAKE_ARGS
+      #                       -DCMAKE_BUILD_TYPE=Release
+      #                       -DNLOPT_CXX:BOOL=OFF
+      #                       -DBUILD_SHARED_LIBS:BOOL=ON
+      #                   )
     endif()
   endif()
 else()
   find_package(NLopt REQUIRED) # sets NLOPT_INCLUDE_DIR & NLOPT_LIBRARY
 endif()
+set_target_properties(nloptlib PROPERTIES IMPORTED_LOCATION ${NLOPT_LIBRARY})
 
 # globally include directories containing the C++ header files of external libraries
 include_directories(${NLOPT_INCLUDE_DIR})

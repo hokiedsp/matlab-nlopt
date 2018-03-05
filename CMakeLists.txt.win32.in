@@ -1,0 +1,21 @@
+cmake_minimum_required(VERSION 2.8.2)
+
+project(nlopt-download NONE)
+
+message("NLOPT_ROOT=${NLOPT_ROOT}")
+
+include(ExternalProject)
+ExternalProject_Add(nlopt
+                    GIT_REPOSITORY "https://github.com/stevengj/nlopt.git"
+                    BINARY_DIR    "${NLOPT_ROOT}/build"
+                    CMAKE_ARGS
+                      -DCMAKE_BUILD_TYPE=Release
+                      -DNLOPT_CXX:BOOL=OFF
+                      -DBUILD_SHARED_LIBS:BOOL=ON
+                      -DNLOPT_PYTHON:BOOL=OFF
+                      -DNLOPT_OCTAVE:BOOL=OFF
+                      -DNLOPT_MATLAB:BOOL=OFF
+                      -DNLOPT_GUILE:BOOL=OFF
+                      -DNLOPT_SWIG:BOOL=OFF
+                      -DCMAKE_INSTALL_PREFIX=.. # relative to caller's execute_process' WORKING_DIRECTORY/build
+                  )
