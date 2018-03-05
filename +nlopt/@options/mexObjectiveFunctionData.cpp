@@ -8,6 +8,9 @@ double mexObjectiveFunction(unsigned n, const double *x, double *gradient, void 
   mexObjectiveFunctionData &data = *(mexObjectiveFunctionData *)data_;
   double f = data.evalFun(n, x, gradient);
 
+  if (data.stop)
+    nlopt_force_stop(data.opt);
+  
   // if (d->verbose)
   //   mexPrintf("nlopt_optimize eval #%d: %g\n", d->neval, f);
     
@@ -34,8 +37,8 @@ mexObjectiveFunctionData::mexObjectiveFunctionData(nlopt_opt &optin, mxArray *mx
 
 mexObjectiveFunctionData::~mexObjectiveFunctionData()
 {
-  if (prhs[1])
-    mxDestroyArray(prhs[1]);
+  mxDestroyArray(prhs[1]);
+  outfun_args[1] = NULL; // same as prhs[1]
   for (int i = 1; i < 4; ++i)
     if (outfun_args[i])
       mxDestroyArray(outfun_args[i]);
@@ -70,8 +73,10 @@ double mexObjectiveFunctionData::evalFun(unsigned n, const double *x, double *gr
   // run OutputFun if specified
   if (outfun_args[0])
   {
+    mexPrintf("x = [%f,%f], f = %f\n",mxGetPr(outfun_args[1])[0],mxGetPr(outfun_args[1])[1],mxGetScalar(plhs[0]));
+
     // update optimvalues
-    set_outfun_args("", plhs[0], plhs[1]); // let go of the plhs content
+    set_outfun_args("", plhs[0], plhs[1]); // move the evalutaed values to outfun_args
     plhs[0] = plhs[1] = NULL;
 
     // call OutputFun
@@ -82,6 +87,11 @@ double mexObjectiveFunctionData::evalFun(unsigned n, const double *x, double *gr
     // return true if stop
     stop = *mxGetLogicals(plhs[0]);
     mxDestroyArray(plhs[0]);
+  }
+  else
+  {
+    mxDestroyArray(plhs[0]);
+    mxDestroyArray(plhs[1]);
   }
 
   return fval;
@@ -159,32 +169,36 @@ bool mexObjectiveFunctionData::evalOutputFun(bool init)
   // no OutputFun assigned, just return and continue
   if (!outfun_args[0]) return false;
 
-  // assume output_args[1] already populated (last evalFun input)
-  // set the optimvalues struct fields
-  mxArray *plhs[2] = {NULL, NULL};
-  mxArray *MException = mexCallMATLABWithTrap(2, plhs, 2, prhs, "feval");
-  if (MException) // maybe it does not compute gradient
-  {
-    mxDestroyArray(MException);
-    mexCallMATLAB(1, plhs, 2, prhs, "feval"); // try again just to retrieve the objective function value
-  }
+  // // assume output_args[1] already populated (last evalFun input)
+  // // set the optimvalues struct fields
+  // mxArray *plhs[2] = {NULL, NULL};
+  // mxArray *MException = mexCallMATLABWithTrap(2, plhs, 2, prhs, "feval");
+  // if (MException) // maybe it does not compute gradient
+  // {
+  //   mxDestroyArray(MException);
+  //   mexCallMATLAB(1, plhs, 2, prhs, "feval"); // try again just to retrieve the objective function value
+  // }
 
-  // update optimvalues fields
-  set_outfun_args(init ? "init" : "done", plhs[0], plhs[1]); // let go of the plhs content
+  // // update optimvalues fields
+  // set_outfun_args(init ? "init" : "done", plhs[0], plhs[1]); // let go of the plhs content
 
-  // run OutputFun
-  mexCallMATLAB(1, plhs, 2, prhs, "feval");
-  if (!(mxIsLogical(plhs[0]) && mxIsScalar(plhs[0])))
-    throw std::runtime_error("OutputFun must return a scalar logical.");
+  // // run OutputFun
+  // mexCallMATLAB(1, plhs, 2, prhs, "feval");
+  // if (!(mxIsLogical(plhs[0]) && mxIsScalar(plhs[0])))
+  //   throw std::runtime_error("OutputFun must return a scalar logical.");
 
-  // if init, change state to "iter" to prep for the forthcoming iterations
-  mxDestroyArray(outfun_args[3]);
-  outfun_args[3] = mxCreateString("iter");
+  // // if init, change state to "iter" to prep for the forthcoming iterations
+  // if (init)
+  // {
+  //   mxDestroyArray(outfun_args[3]);
+  //   outfun_args[3] = mxCreateString("iter");
+  // }
 
-  // return true if stop
-  bool rval = *mxGetLogicals(plhs[0]);
-  mxDestroyArray(plhs[0]);
-  return rval;
+  // // return true if stop
+  // bool rval = *mxGetLogicals(plhs[0]);
+  // mxDestroyArray(plhs[0]);
+  // return rval;
+  return false;
 }
 
 bool mexObjectiveFunctionData::call_matlab_feval_with_trap(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[])

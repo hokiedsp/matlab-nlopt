@@ -234,7 +234,7 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
   plhs[0] = mxDuplicateArray(prhs[1]); // create output x vector from prevalidated initial x
 
   // create a new evaluator object
-  mexObjectiveFunctionData data(opt, plhs[0], mxGetProperty(mxObj, 0, "OutputFun"));
+  mexObjectiveFunctionData data(opt, (mxArray*)prhs[0], mxGetProperty(mxObj, 0, "OutputFun"));
 
   // run init OutputFun if assigned
   data.evalOutputFun(true);
@@ -276,6 +276,9 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
     if (data.lasterror) // something went wrong while calling Matlab
       throw mexRuntimeError(mexGetString(mxGetProperty(data.lasterror, 0, "identifier")), mexGetString(mxGetProperty(data.lasterror, 0, "message")));
   }
+
+  // run init OutputFun if assigned
+  data.evalOutputFun(false);
 
   // return additional arguments if asked
   if (nlhs > 1) // fval

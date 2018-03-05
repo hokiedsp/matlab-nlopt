@@ -238,7 +238,7 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
       function set.OutputFun(obj,val)
          % stop = outfun(x,optimValues,state);
          validateattributes(val,{'function_handle'},{'scalar'});
-         obj.OutputFcn = val;
+         obj.OutputFun = val;
       end
    end
    
@@ -253,7 +253,7 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
             error('FUN must be a function handle.');
          end
          validateattributes(x0,{'double'},{'vector','numel',obj.Dimension,'real','finite'});
-         varargout{1:nargout} = obj.mexfcn(obj,'fminunc',fun,x0);
+         [varargout{1:nargout}] = obj.mexfcn(obj,'fminunc',fun,x0);
          if nargout>3
             varargout{4} = struct('funccount',varargout{4},'Algorithm',obj.Algorithm);
          end
