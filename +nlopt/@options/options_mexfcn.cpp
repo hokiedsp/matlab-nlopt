@@ -234,7 +234,7 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
   plhs[0] = mxDuplicateArray(prhs[1]); // create output x vector from prevalidated initial x
 
   // create a new evaluator object
-  mexObjectiveFunction data(opt, (mxArray*)prhs[0], mxGetProperty(mxObj, 0, "OutputFun"));
+  mexObjectiveFunction data(opt, (mxArray*)prhs[0], mxGetProperty(mxObj, 0, "HessMultFcn"), mxGetProperty(mxObj, 0, "OutputFun"));
 
   // objective function lambda
   auto f = [](unsigned n, const double *x, double *gradient, void *d_) -> double {
@@ -250,29 +250,24 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
      return f;
   };
 
-  // run init OutputFun if assigned
-  data.evalOutputFun(true);
-
-  if (false) // if Hessian given
+  if (data.hessmult_args[0]) // if HessMultFcn given, set both simultaneously
   {
-    // CHECK(mxIsChar(mx) || mxIsFunctionHandle(mx),
-    //       "pre must contain function handles or function names");
-    //   dpre.prhs[0] = mx;
-    //   strcpy(dpre.f, "feval");
-    //   dpre.nrhs = 3;
-    //   dpre.xrhs = 1;
-    // dpre.verbose = d.verbose > 2;
-    // dpre.opt = opt;
-    // dpre.neval = 0;
-    // dpre.prhs[dpre.xrhs] = d.prhs[d.xrhs];
-    // dpre.prhs[d.xrhs + 1] = mxCreateDoubleMatrix(1, n, mxREAL);
-    // d.dpre = &dpre;
-    //   nlopt_set_precond_min_objective(opt, user_function, user_pre, &d);
+     // Hessian multiplier function lambda
+     auto pre = [](unsigned n, const double *x, const double *v, double *vpre, void *f_data) {
+        mexObjectiveFunction &data = *(mexObjectiveFunction *)f_data;
+        data.evalHessMultFcn(n, x, v, vpre);
+        if (data.stop)
+           nlopt_force_stop(data.opt);
+     };
+     nlopt_set_precond_min_objective(opt, f, pre, &data);
   }
   else // else just objective function
   {
-    nlopt_set_min_objective(opt, f, &data);
+     nlopt_set_min_objective(opt, f, &data);
   }
+
+  // run init OutputFun if assigned
+  data.evalOutputFun(true);
 
   // run the NLopt
   double *x = mxGetPr(plhs[0]); // get the vector

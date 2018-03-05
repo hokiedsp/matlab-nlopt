@@ -23,6 +23,7 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
    end
    
    properties
+      HessMultFcn % W = HessMultFcn(H,v);
       Display % 
       OutputFun % function_handle withs signature: stop = outfun(x,optimValues,state)
    end
@@ -234,7 +235,12 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
          validateattributes(val,{'double'},{'scalar','positive','finite'});
          obj.mexfcn(obj,'setInitialStepSize',val);
       end
-      
+
+      function set.HessMultFcn(obj,val)
+         validateattributes(val,{'function_handle'},{'scalar'});
+         obj.OutputFun = val;
+      end
+
       function set.OutputFun(obj,val)
          % stop = outfun(x,optimValues,state);
          validateattributes(val,{'function_handle'},{'scalar'});

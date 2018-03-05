@@ -19,6 +19,11 @@ h1 = line(x0(1),x0(2),'Marker','.','Color','r','LineStyle','--');
 options = nlopt.options('ld_lbfgs',2,'OutputFun',@(x,optimvalues,state)outfun(x,optimvalues,state,h1));
 [x, fval, flag, output] = nlopt.fminunc(@rosenbrockwithgrad,x0,options);
 
+h2 = line(x0(1),x0(2),'Marker','.','Color','y','LineStyle',':');
+options = nlopt.options('ld_ccsaq',2,'HessMultFcn',@rosenbrockHessMult,...
+   'OutputFun',@(x,optimvalues,state)outfun(x,optimvalues,state,h2));
+[x, fval, flag, output] = nlopt.fminunc(@rosenbrockwithgrad,x0,options);
+
 line(x(1),x(2),'Marker','o','LineStyle','none','Color','w','MarkerFaceColor','w')
 
 legend([h h1],'Nelder-Mead', 'Limited-memory BFGS')
@@ -37,4 +42,9 @@ if nargout > 1 % gradient required
     g = [-400*(x(2,:)-x(1,:).^2).*x(1,:)-2*(1-x(1,:));
         200*(x(2,:)-x(1,:).^2)];
 end
+end
+
+function H = rosenbrockHessMult(x,g)
+   H = [1200*x(1)^2-400*x(2)+2, -400*x(1);
+      -400*x(1), 200]*g;
 end

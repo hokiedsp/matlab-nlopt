@@ -5,20 +5,30 @@
 #include <algorithm>
 #include <stdexcept>
 
-mexObjectiveFunction::mexObjectiveFunction(nlopt_opt &optin, mxArray *mxFun, mxArray *mxOutputFun)
+mexObjectiveFunction::mexObjectiveFunction(nlopt_opt &optin, mxArray *mxFun, mxArray *mxHessMultFcn, mxArray *mxOutputFun)
     : prhs{mxFun, mxCreateDoubleMatrix(nlopt_get_dimension(optin), 1, mxREAL)}, // {fun, x}
-      opt(optin),                                                                 // nlopt_opt
-      outfun_args{NULL, NULL, NULL, NULL},                                      // {OutputFun x optimValues state}
+      opt(optin),                                                               // nlopt_opt
+      hessmult_args{NULL, NULL, NULL},     // {HessMultFcn x v}
+      outfun_args{NULL, NULL, NULL, NULL}, // {OutputFun x optimValues state}
       lasterror(NULL), stop(false)
 {
-  // if no output function, nothing to configure
-  if (!mxIsEmpty(mxOutputFun))
-  {
-    // initialize the arguments
-    outfun_args[0] = mxOutputFun;                                    // function handle
-    outfun_args[1] = prhs[1];                                        // share the same mxArray with objective function
-    outfun_args[2] = mexObjectiveFunction::create_optimvalues(); // optimvalues struct
-  }
+   // setup arguments for HessianMultFcn() evaluation only if function given
+   if (!mxIsEmpty(mxHessMultFcn))
+   {
+      // initialize the arguments
+      hessmult_args[0] = mxHessMultFcn;                                               // function handle
+      hessmult_args[1] = mxCreateDoubleMatrix(nlopt_get_dimension(optin), 1, mxREAL); // x
+      hessmult_args[2] = mxCreateDoubleMatrix(nlopt_get_dimension(optin), 1, mxREAL); // v
+   }
+
+   // setup arguments for OutputFun() evaluation only if function given
+   if (!mxIsEmpty(mxOutputFun))
+   {
+      // initialize the arguments
+      outfun_args[0] = mxOutputFun;                                // function handle
+      outfun_args[1] = prhs[1];                                    // share the same mxArray with objective function
+      outfun_args[2] = mexObjectiveFunction::create_optimvalues(); // optimvalues struct
+   }
 }
 
 mexObjectiveFunction::~mexObjectiveFunction()
@@ -87,6 +97,24 @@ objfcn_failed:
    if (plhs[1])
       mxDestroyArray(plhs[1]);
    return NAN;
+}
+
+void mexObjectiveFunction::evalHessMultFcn(unsigned n, const double *x, const double *v, double *vpre)
+{
+   // prepare input and output arguments
+   std::copy_n(x, n, mxGetPr(prhs[1])); // copy the given x to input argument mxArray array
+   std::copy_n(v, n, mxGetPr(prhs[2])); // copy the given x to input argument mxArray array
+   mxArray *plhs = NULL;
+
+   // run the objective function
+   if (call_matlab_feval_with_trap(1, &plhs, 3, prhs) || // traps an error (incl. invalid # of arguments)
+       !mxIsDouble(plhs) || mxIsComplex(plhs) || !(mxGetM(plhs) == 1 || mxGetN(plhs) == 1) || mxGetNumberOfElements(plhs) != n)
+      stop = true;
+   else
+      std::copy_n(mxGetPr(plhs),n,vpre);
+
+   if (plhs)
+      mxDestroyArray(plhs);
 }
 
 mxArray *mexObjectiveFunction::create_optimvalues()
@@ -202,7 +230,7 @@ bool mexObjectiveFunction::call_matlab_feval_with_trap(int nlhs, mxArray *plhs[]
   return false;
 }
 
-// static void mexHessianFunction(unsigned n, const double *x, const double *v, double *vpre, void *d_)
+// void mexHessianFunction(unsigned n, const double *x, const double *v, double *vpre, void *d_)
 // {
 //   user_function_data *d = ((user_function_data *)d_)->dpre;
 //   d->plhs[0] = d->plhs[1] = NULL;
