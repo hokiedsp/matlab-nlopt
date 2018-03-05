@@ -1,6 +1,6 @@
 #pragma once
 
-#include "mexObjectiveFunctionData.h"
+#include "mexObjectiveFunction.h"
 
 #include <nlopt.h>
 #include <mex.h>

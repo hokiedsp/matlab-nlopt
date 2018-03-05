@@ -234,11 +234,11 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
   plhs[0] = mxDuplicateArray(prhs[1]); // create output x vector from prevalidated initial x
 
   // create a new evaluator object
-  mexObjectiveFunctionData data(opt, (mxArray*)prhs[0], mxGetProperty(mxObj, 0, "OutputFun"));
+  mexObjectiveFunction data(opt, (mxArray*)prhs[0], mxGetProperty(mxObj, 0, "OutputFun"));
 
   // objective function lambda
   auto f = [](unsigned n, const double *x, double *gradient, void *d_) -> double {
-     mexObjectiveFunction &data = *(mexObjectiveFunction *)data_;
+     mexObjectiveFunction &data = *(mexObjectiveFunction *)d_;
      double f = data.evalFun(n, x, gradient);
 
      if (data.stop)
@@ -271,7 +271,7 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
   }
   else // else just objective function
   {
-    nlopt_set_min_objective(opt, mexObjectiveFunction, &data);
+    nlopt_set_min_objective(opt, f, &data);
   }
 
   // run the NLopt
