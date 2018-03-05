@@ -342,11 +342,9 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
   }
 }
 
-// NLOPT_EXTERN(nlopt_result) nlopt_set_local_optimizer(nlopt_opt opt,
-// 						    const nlopt_opt local_opt);
+// NLOPT_EXTERN(nlopt_result) nlopt_set_local_optimizer(nlopt_opt opt, const nlopt_opt local_opt);
 
-// NLOPT_EXTERN(nlopt_result) nlopt_set_default_initial_step(nlopt_opt opt,
-// 							 const double *x);
+// NLOPT_EXTERN(nlopt_result) nlopt_set_default_initial_step(nlopt_opt opt, const double *x);
 
 // algorithm outcome
 // NLOPT_EXTERN(int) nlopt_get_numevals(const nlopt_opt opt);
@@ -403,22 +401,3 @@ const std::unordered_map<std::string, mexNLopt::const_action_fcn> mexNLopt::cons
         {"getStepAbsoluteTolerance", &mexNLopt::getXTolAbs},
         {"getStepRelativeTolerance", &mexNLopt::getXTolRel},
         {"getVectorStorage", &mexNLopt::getVectorStorage}};
-
-// static void mexHessianFunction(unsigned n, const double *x, const double *v, double *vpre, void *d_)
-// {
-//   user_function_data *d = ((user_function_data *)d_)->dpre;
-//   d->plhs[0] = d->plhs[1] = NULL;
-//   memcpy(mxGetPr(d->prhs[d->xrhs]), x, n * sizeof(double));
-//   memcpy(mxGetPr(d->prhs[d->xrhs + 1]), v, n * sizeof(double));
-
-//   CHECK0(0 == mexCallMATLAB(1, d->plhs, d->nrhs, d->prhs, d->f),
-//          "error calling user function");
-
-//   CHECK0(mxIsDouble(d->plhs[0]) && !mxIsComplex(d->plhs[0]) && (mxGetM(d->plhs[0]) == 1 || mxGetN(d->plhs[0]) == 1) && mxGetM(d->plhs[0]) * mxGetN(d->plhs[0]) == n,
-//          "vpre vector from user function is the wrong size");
-//   memcpy(vpre, mxGetPr(d->plhs[0]), n * sizeof(double));
-//   mxDestroyArray(d->plhs[0]);
-//   d->neval++;
-//   if (d->verbose)
-//     mexPrintf("nlopt_optimize precond eval #%d\n", d->neval);
-// }

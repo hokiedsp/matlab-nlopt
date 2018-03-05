@@ -1,5 +1,7 @@
 #include "mexObjectiveFunction.h"
 
+#include <mexRuntimeError.h>
+
 #include <algorithm>
 #include <stdexcept>
 
@@ -57,8 +59,6 @@ double mexObjectiveFunction::evalFun(unsigned n, const double *x, double *gradie
   // run OutputFun if specified
   if (outfun_args[0])
   {
-    mexPrintf("x = [%f,%f], f = %f\n",mxGetPr(outfun_args[1])[0],mxGetPr(outfun_args[1])[1],mxGetScalar(plhs[0]));
-
     // update optimvalues
     set_outfun_args("", plhs[0], plhs[1]); // move the evalutaed values to outfun_args
     plhs[0] = plhs[1] = NULL;
@@ -81,11 +81,12 @@ double mexObjectiveFunction::evalFun(unsigned n, const double *x, double *gradie
   return fval;
 
 objfcn_failed:
-  if (plhs[0])
-    mxDestroyArray(plhs[0]);
-  if (plhs[1])
-    mxDestroyArray(plhs[1]);
-  return NAN;
+   stop = true; // something went wrong, stop now
+   if (plhs[0])
+      mxDestroyArray(plhs[0]);
+   if (plhs[1])
+      mxDestroyArray(plhs[1]);
+   return NAN;
 }
 
 mxArray *mexObjectiveFunction::create_optimvalues()
@@ -153,36 +154,35 @@ bool mexObjectiveFunction::evalOutputFun(bool init)
   // no OutputFun assigned, just return and continue
   if (!outfun_args[0]) return false;
 
-  // // assume output_args[1] already populated (last evalFun input)
-  // // set the optimvalues struct fields
-  // mxArray *plhs[2] = {NULL, NULL};
-  // mxArray *MException = mexCallMATLABWithTrap(2, plhs, 2, prhs, "feval");
-  // if (MException) // maybe it does not compute gradient
-  // {
-  //   mxDestroyArray(MException);
-  //   mexCallMATLAB(1, plhs, 2, prhs, "feval"); // try again just to retrieve the objective function value
-  // }
+  // assume output_args[1] already populated (last evalFun input)
+  // set the optimvalues struct fields
+  mxArray *plhs[2] = {NULL, NULL};
+  mxArray *MException = mexCallMATLABWithTrap(2, plhs, 2, prhs, "feval");
+  if (MException) // maybe it does not compute gradient
+  {
+    mxDestroyArray(MException);
+    mexCallMATLAB(1, plhs, 2, prhs, "feval"); // try again just to retrieve the objective function value
+  }
 
-  // // update optimvalues fields
-  // set_outfun_args(init ? "init" : "done", plhs[0], plhs[1]); // let go of the plhs content
+  // update optimvalues fields
+  set_outfun_args(init ? "init" : "done", plhs[0], plhs[1]); // let go of the plhs content
 
-  // // run OutputFun
-  // mexCallMATLAB(1, plhs, 2, prhs, "feval");
-  // if (!(mxIsLogical(plhs[0]) && mxIsScalar(plhs[0])))
-  //   throw std::runtime_error("OutputFun must return a scalar logical.");
+  // run OutputFun
+  mexCallMATLAB(1, plhs, 2, prhs, "feval");
+  if (!((mxIsLogical(plhs[0])||mxIsNumeric(plhs[0])) && mxIsScalar(plhs[0])))
+    throw mexRuntimeError("failedOutputFun","OutputFun must return a scalar logical.");
 
-  // // if init, change state to "iter" to prep for the forthcoming iterations
-  // if (init)
-  // {
-  //   mxDestroyArray(outfun_args[3]);
-  //   outfun_args[3] = mxCreateString("iter");
-  // }
+  // if init, change state to "iter" to prep for the forthcoming iterations
+  if (init)
+  {
+    mxDestroyArray(outfun_args[3]);
+    outfun_args[3] = mxCreateString("iter");
+  }
 
-  // // return true if stop
-  // bool rval = *mxGetLogicals(plhs[0]);
-  // mxDestroyArray(plhs[0]);
-  // return rval;
-  return false;
+  // return true if stop
+  bool rval = (bool)mxGetScalar(plhs[0]);
+  mxDestroyArray(plhs[0]);
+  return rval;
 }
 
 bool mexObjectiveFunction::call_matlab_feval_with_trap(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[])
@@ -201,3 +201,22 @@ bool mexObjectiveFunction::call_matlab_feval_with_trap(int nlhs, mxArray *plhs[]
 
   return false;
 }
+
+// static void mexHessianFunction(unsigned n, const double *x, const double *v, double *vpre, void *d_)
+// {
+//   user_function_data *d = ((user_function_data *)d_)->dpre;
+//   d->plhs[0] = d->plhs[1] = NULL;
+//   memcpy(mxGetPr(d->prhs[d->xrhs]), x, n * sizeof(double));
+//   memcpy(mxGetPr(d->prhs[d->xrhs + 1]), v, n * sizeof(double));
+
+//   CHECK0(0 == mexCallMATLAB(1, d->plhs, d->nrhs, d->prhs, d->f),
+//          "error calling user function");
+
+//   CHECK0(mxIsDouble(d->plhs[0]) && !mxIsComplex(d->plhs[0]) && (mxGetM(d->plhs[0]) == 1 || mxGetN(d->plhs[0]) == 1) && mxGetM(d->plhs[0]) * mxGetN(d->plhs[0]) == n,
+//          "vpre vector from user function is the wrong size");
+//   memcpy(vpre, mxGetPr(d->plhs[0]), n * sizeof(double));
+//   mxDestroyArray(d->plhs[0]);
+//   d->neval++;
+//   if (d->verbose)
+//     mexPrintf("nlopt_optimize precond eval #%d\n", d->neval);
+// }
