@@ -1,7 +1,7 @@
 
 #include "mexNLopt.h"
 #include "nlopt_algorigthm_idstr.h"
-#include "mexObjectiveFunctionData.h"
+#include "mexObjectiveFunction.h"
 
 #include <mexObjectHandler.h>
 #include <mex.h>
@@ -235,6 +235,20 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
 
   // create a new evaluator object
   mexObjectiveFunctionData data(opt, (mxArray*)prhs[0], mxGetProperty(mxObj, 0, "OutputFun"));
+
+  // objective function lambda
+  auto f = [](unsigned n, const double *x, double *gradient, void *d_) -> double {
+     mexObjectiveFunction &data = *(mexObjectiveFunction *)data_;
+     double f = data.evalFun(n, x, gradient);
+
+     if (data.stop)
+        nlopt_force_stop(data.opt);
+
+     // if (d->verbose)
+     //   mexPrintf("nlopt_optimize eval #%d: %g\n", d->neval, f);
+
+     return f;
+  };
 
   // run init OutputFun if assigned
   data.evalOutputFun(true);

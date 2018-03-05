@@ -1,25 +1,9 @@
-#include "mexObjectiveFunctionData.h"
+#include "mexObjectiveFunction.h"
 
 #include <algorithm>
 #include <stdexcept>
 
-double mexObjectiveFunction(unsigned n, const double *x, double *gradient, void *data_)
-{
-  mexObjectiveFunctionData &data = *(mexObjectiveFunctionData *)data_;
-  double f = data.evalFun(n, x, gradient);
-
-  if (data.stop)
-    nlopt_force_stop(data.opt);
-  
-  // if (d->verbose)
-  //   mexPrintf("nlopt_optimize eval #%d: %g\n", d->neval, f);
-    
-  return f;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-mexObjectiveFunctionData::mexObjectiveFunctionData(nlopt_opt &optin, mxArray *mxFun, mxArray *mxOutputFun)
+mexObjectiveFunction::mexObjectiveFunction(nlopt_opt &optin, mxArray *mxFun, mxArray *mxOutputFun)
     : prhs{mxFun, mxCreateDoubleMatrix(nlopt_get_dimension(optin), 1, mxREAL)}, // {fun, x}
       opt(optin),                                                                 // nlopt_opt
       outfun_args{NULL, NULL, NULL, NULL},                                      // {OutputFun x optimValues state}
@@ -31,11 +15,11 @@ mexObjectiveFunctionData::mexObjectiveFunctionData(nlopt_opt &optin, mxArray *mx
     // initialize the arguments
     outfun_args[0] = mxOutputFun;                                    // function handle
     outfun_args[1] = prhs[1];                                        // share the same mxArray with objective function
-    outfun_args[2] = mexObjectiveFunctionData::create_optimvalues(); // optimvalues struct
+    outfun_args[2] = mexObjectiveFunction::create_optimvalues(); // optimvalues struct
   }
 }
 
-mexObjectiveFunctionData::~mexObjectiveFunctionData()
+mexObjectiveFunction::~mexObjectiveFunction()
 {
   mxDestroyArray(prhs[1]);
   outfun_args[1] = NULL; // same as prhs[1]
@@ -46,7 +30,7 @@ mexObjectiveFunctionData::~mexObjectiveFunctionData()
     mxDestroyArray(lasterror);
 }
 
-double mexObjectiveFunctionData::evalFun(unsigned n, const double *x, double *gradient)
+double mexObjectiveFunction::evalFun(unsigned n, const double *x, double *gradient)
 {
   // prepare input and output arguments
   std::copy_n(x, n, mxGetPr(prhs[1])); // copy the given x to input argument mxArray array
@@ -104,7 +88,7 @@ objfcn_failed:
   return NAN;
 }
 
-mxArray *mexObjectiveFunctionData::create_optimvalues()
+mxArray *mexObjectiveFunction::create_optimvalues()
 {
   const char *fields[22] = {"attainfactor", "cgiterations", "constrviolation", "degenerate", "directionalderivative", "firstorderopt",
                             "funccount", "fval", "gradient", "iteration", "lambda", "lssteplength", "maxfval", "positivedefinite", "procedure", "ratio",
@@ -119,7 +103,7 @@ mxArray *mexObjectiveFunctionData::create_optimvalues()
   return rval;
 }
 
-void mexObjectiveFunctionData::set_outfun_args(const char *state, mxArray *mxFval, mxArray *mxGradient)
+void mexObjectiveFunction::set_outfun_args(const char *state, mxArray *mxFval, mxArray *mxGradient)
 {
   // update optimvalues.fval
   mxArray *field = mxGetField(outfun_args[2], 0, "fval");
@@ -148,7 +132,7 @@ void mexObjectiveFunctionData::set_outfun_args(const char *state, mxArray *mxFva
   }
 }
 
-mxArray *mexObjectiveFunctionData::evalGrad(mxArray *x)
+mxArray *mexObjectiveFunction::evalGrad(mxArray *x)
 {
   // assume output_args[1] already populated (last evalFun input)
   // set the optimvalues struct fields
@@ -164,7 +148,7 @@ mxArray *mexObjectiveFunctionData::evalGrad(mxArray *x)
   return plhs[1];
 }
 
-bool mexObjectiveFunctionData::evalOutputFun(bool init)
+bool mexObjectiveFunction::evalOutputFun(bool init)
 {
   // no OutputFun assigned, just return and continue
   if (!outfun_args[0]) return false;
@@ -201,7 +185,7 @@ bool mexObjectiveFunctionData::evalOutputFun(bool init)
   return false;
 }
 
-bool mexObjectiveFunctionData::call_matlab_feval_with_trap(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[])
+bool mexObjectiveFunction::call_matlab_feval_with_trap(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[])
 {
   // call Matlab
   mxArray *new_error = mexCallMATLABWithTrap(nlhs, plhs, nrhs, prhs, "feval");

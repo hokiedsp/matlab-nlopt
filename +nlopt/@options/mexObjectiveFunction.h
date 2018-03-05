@@ -3,10 +3,7 @@
 #include <nlopt.h>
 #include <mex.h>
 
-double mexObjectiveFunction(unsigned n, const double *x, double *gradient, void *d_);
-// void mexHessianFunction(unsigned n, const double *x, const double *v, double *vpre, void *d_);
-
-struct mexObjectiveFunctionData
+struct mexObjectiveFunction
 {
   mxArray *prhs[2];          // feval mexMatlabCall input arguments for objective function evaluation
   nlopt_opt &opt;
@@ -14,8 +11,8 @@ struct mexObjectiveFunctionData
   mxArray *lasterror;        // trapped MException
   bool stop;                 // true if user issued a stop
   
-  mexObjectiveFunctionData(nlopt_opt & optin, mxArray * mxFun, mxArray * mxOutputFun);
-  ~mexObjectiveFunctionData();
+  mexObjectiveFunction(nlopt_opt & optin, mxArray * mxFun, mxArray * mxOutputFun);
+  ~mexObjectiveFunction();
   double evalFun(unsigned n, const double *x, double *gradient);
   bool evalOutputFun(bool init);
   mxArray *evalGrad(mxArray *x);
