@@ -164,7 +164,7 @@ private:
   void fminbnd(MEX_ACTION_ARGUMENTS);
 
   // common routine to run and gather the outcome
-  static std::pair<nlopt_func,nlopt_precond> config_obj_fun(nlopt_opt opt, mexObjectiveFunction &data);
+  static void config_obj_fun(nlopt_opt opt, mexObjectiveFunction &data);
   static void run_n_report(int nlhs, mxArray *plhs[], nlopt_opt opt, mexObjectiveFunction &data);
   
   // routine to set subproblem options

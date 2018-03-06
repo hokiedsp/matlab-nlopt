@@ -199,16 +199,16 @@ coneq = {};
 mconeq = {};
 if mode(1) % A&b given
    if isscalar(b)
-      con{1} = @(x)A*x-b;
+      con{1} = @(x)lincon(x,A,b);
    else
-      mcon{1} = @(x)A*x-b;
+      mcon{1} = @(x)lincon(x,A,b);
    end
 end
 if mode(2) %Aeq&beq
    if isscalar(beq)
-      coneq{1} = @(x)Aeq*x-beq;
+      coneq{1} = @(x)lincon(x,Aeq,beq);
    else
-      mconeq{1} = @(x)Aeq*x-beq;
+      mconeq{1} = @(x)lincon(x,Aeq,beq);
    end
 end
 if mode(3) % C
@@ -238,4 +238,9 @@ end
 
 % call the options.fmincon to perform the optimization
 [varargout{1:nargout}] = options.fmincon(fun,x0,con,mcon,coneq,mconeq,lb,ub);
+end
+
+function [c,dC] = lincon(x,A,b)
+  c = A*x-b;
+  dC = A.';
 end

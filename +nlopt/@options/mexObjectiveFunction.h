@@ -5,6 +5,9 @@
 
 struct mexObjectiveFunction
 {
+  static double obj_fun(unsigned n, const double *x, double *gradient, void *d_);
+  static void precond_fun(unsigned n, const double *x, const double *v, double *vpre, void *f_data);
+
   mxArray *prhs[2];          // feval mexMatlabCall input arguments for objective function evaluation
   nlopt_opt &opt;
   mxArray *hessmult_args[3];   // Hv = HessMultFcn(x,v)

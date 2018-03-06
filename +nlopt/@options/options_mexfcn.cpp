@@ -2,6 +2,7 @@
 #include "mexNLopt.h"
 #include "nlopt_algorigthm_idstr.h"
 #include "mexObjectiveFunction.h"
+#include "mexConstraintFunction.h"
 
 #include <mexObjectHandler.h>
 #include <mex.h>
@@ -229,35 +230,16 @@ mxArray *mexNLopt::getInitialStep(const mxArray *x0) const
 }
 
 // OPTIMIZATION ROUTINES
-std::pair<nlopt_func,nlopt_precond> mexNLopt::config_obj_fun(nlopt_opt opt, mexObjectiveFunction &data)
+void mexNLopt::config_obj_fun(nlopt_opt opt, mexObjectiveFunction &data)
 {
-  // objective function lambda
-  auto f = [](unsigned n, const double *x, double *gradient, void *d_) -> double {
-    mexObjectiveFunction &data = *(mexObjectiveFunction *)d_;
-    double f = data.evalFun(n, x, gradient);
-    if (data.stop)
-      nlopt_force_stop(data.opt);
-    return f;
-  };
-
-  // Hessian multiplier function lambda
-  auto pre = [](unsigned n, const double *x, const double *v, double *vpre, void *f_data) {
-    mexObjectiveFunction &data = *(mexObjectiveFunction *)f_data;
-    data.evalHessMultFcn(n, x, v, vpre);
-    if (data.stop)
-      nlopt_force_stop(data.opt);
-  };
-
   if (data.hessmult_args[0]) // if HessMultFcn given, set both simultaneously
   {
-    nlopt_set_precond_min_objective(opt, f, pre, &data);
+    nlopt_set_precond_min_objective(opt, &mexObjectiveFunction::obj_fun, &mexObjectiveFunction::precond_fun, &data);
   }
   else // else just objective function
   {
-    nlopt_set_min_objective(opt, f, &data);
+    nlopt_set_min_objective(opt, &mexObjectiveFunction::obj_fun, &data);
   }
-
-  return std::make_pair(f,pre);
 }
 
 void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
@@ -266,10 +248,10 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
   mexObjectiveFunction data(opt, (mxArray *)prhs[0], mxGetProperty(mxObj, 0, "HessMultFcn"), mxGetProperty(mxObj, 0, "OutputFun"));
 
   // set up objective function (and Hessian Multiplier function if given)
-  auto funs = mexNLopt::config_obj_fun(opt,data);
+  mexNLopt::config_obj_fun(opt, data);
 
   // create output x vector from prevalidated initial x
-  plhs[0] = mxDuplicateArray(prhs[1]); 
+  plhs[0] = mxDuplicateArray(prhs[1]);
 
   // go!
   mexNLopt::run_n_report(nlhs, plhs, opt, data);
@@ -285,35 +267,36 @@ void mexNLopt::fmincon(MEX_ACTION_ARGUMENTS) // nrhs=8, prhs=(fun,x0,con,mcon,co
   mexObjectiveFunction data(temp_opt, (mxArray *)prhs[0], mxGetProperty(mxObj, 0, "HessMultFcn"), mxGetProperty(mxObj, 0, "OutputFun"));
 
   // set up objective function (and Hessian Multiplier function if given)
-  auto funs = mexNLopt::config_obj_fun(temp_opt,data);
+  mexNLopt::config_obj_fun(temp_opt, data);
 
   // set local_options if specified
   set_local_optimizer(temp_opt, mxObj);
 
   // configure constraints
-  double tol = mxGetScalar(mxGetProperty(mxObj,0,"ConstraintTolerance"));
-  
+  double tol = mxGetScalar(mxGetProperty(mxObj, 0, "ConstraintTolerance"));
+
   // keep nonlinear constraint lambdas in a vector
-  std::vector<nlopt_func>   con_funs;
-  std::vector<nlopt_mfunc> mcon_funs;
+  std::vector<mexConstraintFunction> con_funs;
   if (!mxIsEmpty(prhs[2])) // con
   {
-    for (int i = 0; i<mxGetNumberOfElements(prhs[2]))
+    for (int i = 0; i < mxGetNumberOfElements(prhs[2]); ++i)
     {
-      
+      con_funs.emplace_back(mxGetCell(prhs[2], i), data);
+      if (nlopt_add_inequality_constraint(temp_opt, mexConstraintFunction::con_fun, data, tol) < 0)
+        throw mexRuntimeError("invalidInequalityConstraint", "Could not complete nlopt_add_inequality_constraint() call");
     }
   }
+  // NLOPT_EXTERN(nlopt_result) nlopt_add_precond_inequality_constraint(nlopt_opt opt, nlopt_func fc, nlopt_precond pre, void *fc_data, double tol);
+  // NLOPT_EXTERN(nlopt_result) nlopt_add_inequality_mconstraint(nlopt_opt opt, unsigned m,nlopt_mfunc fc,void *fc_data,const double *tol);
 
-// typedef void (*nlopt_mfunc)(unsigned m, double *result,
-// 			    unsigned n, const double *x,
-// 			     double *gradient, /* NULL if not needed */
-// 			     void *func_data);
-
+  // NLOPT_EXTERN(nlopt_result) nlopt_add_equality_constraint(nlopt_opt opt, nlopt_func h, void *h_data, double tol);
+  // NLOPT_EXTERN(nlopt_result) nlopt_add_precond_equality_constraint(nlopt_opt opt, nlopt_func h, nlopt_precond pre, void *h_data, double tol);
+  // NLOPT_EXTERN(nlopt_result) nlopt_add_equality_mconstraint(nlopt_opt opt,unsigned m,nlopt_mfunc h,void *h_data,const double *tol);
 
   set_bounds(temp_opt, prhs[6], prhs[7]);
 
   // create output x vector from prevalidated initial x
-  plhs[0] = mxDuplicateArray(prhs[1]); 
+  plhs[0] = mxDuplicateArray(prhs[1]);
 
   // go!
   mexNLopt::run_n_report(nlhs, plhs, temp_opt, data);
@@ -321,11 +304,11 @@ void mexNLopt::fmincon(MEX_ACTION_ARGUMENTS) // nrhs=8, prhs=(fun,x0,con,mcon,co
 
 void mexNLopt::set_bounds(nlopt_opt opt, const mxArray *mxLB, const mxArray *mxUB)
 {
-  if (!mxIsEmpty(mxLB) && nlopt_set_lower_bounds(opt, mxGetPr(mxLB))<0)
-      throw mexRuntimeError("badLowerBound","Setting lower bound triggered an error.");
+  if (!mxIsEmpty(mxLB) && nlopt_set_lower_bounds(opt, mxGetPr(mxLB)) < 0)
+    throw mexRuntimeError("badLowerBound", "Setting lower bound triggered an error.");
 
-  if (!mxIsEmpty(mxUB) && nlopt_set_upper_bounds(opt, mxGetPr(mxUB))<0)
-      throw mexRuntimeError("badUpperBound","Setting upper bound triggered an error.");
+  if (!mxIsEmpty(mxUB) && nlopt_set_upper_bounds(opt, mxGetPr(mxUB)) < 0)
+    throw mexRuntimeError("badUpperBound", "Setting upper bound triggered an error.");
 }
 
 void mexNLopt::run_n_report(int nlhs, mxArray *plhs[], nlopt_opt opt, mexObjectiveFunction &data)
@@ -418,29 +401,6 @@ void mexNLopt::set_local_optimizer(nlopt_opt opt, const mxArray *mxObj)
   if (nlopt_set_local_optimizer(opt, obj.opt) < 0)
     throw mexRuntimeError("unknownError", "nlopt_set_local_optimizer() failed.");
 }
-
-// NLOPT_EXTERN(nlopt_result) nlopt_set_default_initial_step(nlopt_opt opt, const double *x);
-
-// algorithm outcome
-// NLOPT_EXTERN(int) nlopt_get_numevals(const nlopt_opt opt);
-
-// NLOPT_EXTERN(nlopt_result) nlopt_force_stop(nlopt_opt opt);
-// NLOPT_EXTERN(nlopt_result) nlopt_set_force_stop(nlopt_opt opt, int val);
-// NLOPT_EXTERN(int) nlopt_get_force_stop(const nlopt_opt opt);
-
-// NLOPT_EXTERN(nlopt_result) nlopt_set_precond_min_objective(nlopt_opt opt, nlopt_func f, nlopt_precond pre, void *f_data);
-
-/* constraints: */
-
-// NLOPT_EXTERN(nlopt_result) nlopt_remove_inequality_constraints(nlopt_opt opt);
-// NLOPT_EXTERN(nlopt_result) nlopt_add_inequality_constraint(nlopt_opt opt, nlopt_func fc, void *fc_data, double tol);
-// NLOPT_EXTERN(nlopt_result) nlopt_add_precond_inequality_constraint(nlopt_opt opt, nlopt_func fc, nlopt_precond pre, void *fc_data, double tol);
-// NLOPT_EXTERN(nlopt_result) nlopt_add_inequality_mconstraint(nlopt_opt opt, unsigned m,nlopt_mfunc fc,void *fc_data,const double *tol);
-
-// NLOPT_EXTERN(nlopt_result) nlopt_remove_equality_constraints(nlopt_opt opt);
-// NLOPT_EXTERN(nlopt_result) nlopt_add_equality_constraint(nlopt_opt opt, nlopt_func h, void *h_data, double tol);
-// NLOPT_EXTERN(nlopt_result) nlopt_add_precond_equality_constraint(nlopt_opt opt, nlopt_func h, nlopt_precond pre, void *h_data, double tol);
-// NLOPT_EXTERN(nlopt_result) nlopt_add_equality_mconstraint(nlopt_opt opt,unsigned m,nlopt_mfunc h,void *h_data,const double *tol);
 
 const std::unordered_map<std::string, mexNLopt::action_fcn> mexNLopt::action_map =
     {

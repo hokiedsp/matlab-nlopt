@@ -1,5 +1,5 @@
 # compile back-end MEX function for mexClass class
-matlab_add_mex(NAME mexfcn SRC options_mexfcn.cpp mexObjectiveFunction.cpp LINK_TO ${NLOPT_LIBRARY})
+matlab_add_mex(NAME mexfcn SRC options_mexfcn.cpp mexObjectiveFunction.cpp mexConstraintFunction.cpp LINK_TO ${NLOPT_LIBRARY})
 
 # if the compiler is MS VisualC++, add 'mexFunction' to the exported symbols
 if(WIN32 AND MSVC)

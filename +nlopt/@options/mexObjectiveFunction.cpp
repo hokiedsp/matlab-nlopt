@@ -45,6 +45,23 @@ mexObjectiveFunction::~mexObjectiveFunction()
     mxDestroyArray(lasterror);
 }
 
+double mexObjectiveFunction::obj_fun(unsigned n, const double *x, double *gradient, void *d_)
+{
+  mexObjectiveFunction &data = *(mexObjectiveFunction *)d_;
+  double f = data.evalFun(n, x, gradient);
+  if (data.stop)
+    nlopt_force_stop(data.opt);
+  return f;
+};
+
+void mexObjectiveFunction::precond_fun (unsigned n, const double *x, const double *v, double *vpre, void *f_data)
+{
+  mexObjectiveFunction &data = *(mexObjectiveFunction *)f_data;
+  data.evalHessMultFcn(n, x, v, vpre);
+  if (data.stop)
+    nlopt_force_stop(data.opt);
+};
+
 double mexObjectiveFunction::evalFun(unsigned n, const double *x, double *gradient)
 {
   // prepare input and output arguments
