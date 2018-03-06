@@ -17,8 +17,8 @@ mexObjectiveFunction::mexObjectiveFunction(nlopt_opt &optin, mxArray *mxFun, mxA
    {
       // initialize the arguments
       hessmult_args[0] = mxHessMultFcn;                                               // function handle
-      hessmult_args[1] = mxCreateDoubleMatrix(nlopt_get_dimension(optin), 1, mxREAL); // x
-      hessmult_args[2] = mxCreateDoubleMatrix(nlopt_get_dimension(optin), 1, mxREAL); // v
+      hessmult_args[1] = mxCreateDoubleMatrix(nlopt_get_dimension(opt), 1, mxREAL); // x
+      hessmult_args[2] = mxCreateDoubleMatrix(nlopt_get_dimension(opt), 1, mxREAL); // v
    }
 
    // setup arguments for OutputFun() evaluation only if function given
@@ -38,6 +38,9 @@ mexObjectiveFunction::~mexObjectiveFunction()
   for (int i = 1; i < 4; ++i)
     if (outfun_args[i])
       mxDestroyArray(outfun_args[i]);
+  for (int i = 1; i < 3; ++i)
+    if (hessmult_args[i])
+      mxDestroyArray(hessmult_args[i]);
   if (lasterror)
     mxDestroyArray(lasterror);
 }
@@ -102,12 +105,12 @@ objfcn_failed:
 void mexObjectiveFunction::evalHessMultFcn(unsigned n, const double *x, const double *v, double *vpre)
 {
    // prepare input and output arguments
-   std::copy_n(x, n, mxGetPr(prhs[1])); // copy the given x to input argument mxArray array
-   std::copy_n(v, n, mxGetPr(prhs[2])); // copy the given x to input argument mxArray array
+   std::copy_n(x, n, mxGetPr(hessmult_args[1])); // copy the given x to input argument mxArray array
+   std::copy_n(v, n, mxGetPr(hessmult_args[2])); // copy the given x to input argument mxArray array
    mxArray *plhs = NULL;
 
    // run the objective function
-   if (call_matlab_feval_with_trap(1, &plhs, 3, prhs) || // traps an error (incl. invalid # of arguments)
+   if (call_matlab_feval_with_trap(1, &plhs, 3, hessmult_args) || // traps an error (incl. invalid # of arguments)
        !mxIsDouble(plhs) || mxIsComplex(plhs) || !(mxGetM(plhs) == 1 || mxGetN(plhs) == 1) || mxGetNumberOfElements(plhs) != n)
       stop = true;
    else
