@@ -273,7 +273,7 @@ void mexNLopt::fmincon(MEX_ACTION_ARGUMENTS) // nrhs=8, prhs=(fun,x0,con,mcon,co
   set_local_optimizer(temp_opt, mxObj);
 
   // configure constraints
-  double tol = mxGetScalar(mxGetProperty(mxObj, 0, "ConstraintTolerance"));
+  std::vector<double> tol(1, mxGetScalar(mxGetProperty(mxObj, 0, "ConstraintTolerance")));
 
   // keep nonlinear constraint lambdas in a vector
   std::vector<mexConstraintFunction> con_funs;
@@ -282,16 +282,48 @@ void mexNLopt::fmincon(MEX_ACTION_ARGUMENTS) // nrhs=8, prhs=(fun,x0,con,mcon,co
     for (int i = 0; i < mxGetNumberOfElements(prhs[2]); ++i)
     {
       con_funs.emplace_back(mxGetCell(prhs[2], i), data);
-      if (nlopt_add_inequality_constraint(temp_opt, mexConstraintFunction::con_fun, data, tol) < 0)
+      if (nlopt_add_inequality_constraint(temp_opt, &mexConstraintFunction::con_fun, &(con_funs.back()), tol.front()) < 0)
         throw mexRuntimeError("invalidInequalityConstraint", "Could not complete nlopt_add_inequality_constraint() call");
     }
   }
-  // NLOPT_EXTERN(nlopt_result) nlopt_add_precond_inequality_constraint(nlopt_opt opt, nlopt_func fc, nlopt_precond pre, void *fc_data, double tol);
-  // NLOPT_EXTERN(nlopt_result) nlopt_add_inequality_mconstraint(nlopt_opt opt, unsigned m,nlopt_mfunc fc,void *fc_data,const double *tol);
+  if (!mxIsEmpty(prhs[3])) // mcon
+  {
+    unsigned n = (unsigned)mxGetM(prhs[3]);
+    for (unsigned i = 0; i < n; ++i)
+    {
+      con_funs.emplace_back(mxGetCell(prhs[3], i), data);
+      unsigned m = (unsigned)mxGetScalar(mxGetCell(prhs[3], i + n));
+      if (m > tol.size())
+        tol.resize(m, tol.front());
+      if (nlopt_add_inequality_mconstraint(temp_opt, m, &mexConstraintFunction::vcon_fun, &(con_funs.back()), tol.data()) < 0)
+        throw mexRuntimeError("invalidVectorInequalityConstraint", "Could not complete nlopt_add_inequality_mconstraint() call");
+    }
+  }
 
-  // NLOPT_EXTERN(nlopt_result) nlopt_add_equality_constraint(nlopt_opt opt, nlopt_func h, void *h_data, double tol);
+  if (!mxIsEmpty(prhs[4])) // coneq
+  {
+    for (unsigned i = 0; i < mxGetNumberOfElements(prhs[4]); ++i)
+    {
+      con_funs.emplace_back(mxGetCell(prhs[4], i), data);
+      if (nlopt_add_equality_constraint(temp_opt, &mexConstraintFunction::con_fun, &(con_funs.back()), tol.front()) < 0)
+        throw mexRuntimeError("invalidEqualityConstraint", "Could not complete nlopt_add_inequality_constraint() call");
+    }
+  }
+  if (!mxIsEmpty(prhs[5])) // mconeq
+  {
+    unsigned n = (unsigned)mxGetM(prhs[5]);
+    for (unsigned i = 0; i < n; ++i)
+    {
+      con_funs.emplace_back(mxGetCell(prhs[5], i), data);
+      unsigned m = (unsigned)mxGetScalar(mxGetCell(prhs[5], i + n));
+      if (m > tol.size())
+        tol.resize(m, tol.front());
+      if (nlopt_add_inequality_mconstraint(temp_opt, m, &mexConstraintFunction::vcon_fun, &(con_funs.back()), tol.data()) < 0)
+        throw mexRuntimeError("invalidEqualityConstraint", "Could not complete nlopt_add_equality_mconstraint() call");
+    }
+  }
+  // NLOPT_EXTERN(nlopt_result) nlopt_add_precond_inequality_constraint(nlopt_opt opt, nlopt_func fc, nlopt_precond pre, void *fc_data, double tol);
   // NLOPT_EXTERN(nlopt_result) nlopt_add_precond_equality_constraint(nlopt_opt opt, nlopt_func h, nlopt_precond pre, void *h_data, double tol);
-  // NLOPT_EXTERN(nlopt_result) nlopt_add_equality_mconstraint(nlopt_opt opt,unsigned m,nlopt_mfunc h,void *h_data,const double *tol);
 
   set_bounds(temp_opt, prhs[6], prhs[7]);
 

@@ -194,30 +194,31 @@ end
 
 % combine them into lb, ub, con, mcon, coneq, mconeq
 con = {};
-mcon = {};
+mcon = cell(0,2);
 coneq = {};
-mconeq = {};
+mconeq = cell(0,2);
 if mode(1) % A&b given
    if isscalar(b)
       con{1} = @(x)lincon(x,A,b);
    else
-      mcon{1} = @(x)lincon(x,A,b);
+      mcon(1,:) = {@(x)lincon(x,A,b) numel(b)};
    end
 end
 if mode(2) %Aeq&beq
    if isscalar(beq)
       coneq{1} = @(x)lincon(x,Aeq,beq);
    else
-      mconeq{1} = @(x)lincon(x,Aeq,beq);
+      mconeq(1,:) = {@(x)lincon(x,Aeq,beq) numel(beq)};
    end
 end
 if mode(3) % C
    try
       val = C(x);
+      assert(isdouble(val)&&isvector(val))
       if isscalar(val)
          con{end+1} = C;
       else
-         mcon{end+1} = C;
+         mcon(end+1,:) = {C numel(val)};
       end
    catch
       error('Invalid nonlinear constraint function C(x)');
@@ -226,10 +227,11 @@ end
 if mode(4) % C
    try
       val = Ceq(x);
+      assert(isdouble(val)&&isvector(val))
       if isscalar(val)
          coneq{end+1} = Ceq;
       else
-         mconeq{end+1} = Ceq;
+         mconeq(end+1,:) = {Ceq numel(val)};
       end
    catch
       error('Invalid nonlinear equality constraint function Ceq(x)');
