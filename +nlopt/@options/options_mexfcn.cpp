@@ -12,6 +12,7 @@
 #include <vector>
 // #include <unordered_map>
 #include <algorithm>
+#include <memory>
 
 class mexNLopt;
 
@@ -228,44 +229,107 @@ mxArray *mexNLopt::getInitialStep(const mxArray *x0) const
 }
 
 // OPTIMIZATION ROUTINES
-void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
-{ // x = fminunc(fun,x0) (prevalidated inputs)
-  unsigned d = nlopt_get_dimension(opt);
-  plhs[0] = mxDuplicateArray(prhs[1]); // create output x vector from prevalidated initial x
-
-  // create a new evaluator object
-  mexObjectiveFunction data(opt, (mxArray*)prhs[0], mxGetProperty(mxObj, 0, "HessMultFcn"), mxGetProperty(mxObj, 0, "OutputFun"));
-
+std::pair<nlopt_func,nlopt_precond> mexNLopt::config_obj_fun(nlopt_opt opt, mexObjectiveFunction &data)
+{
   // objective function lambda
   auto f = [](unsigned n, const double *x, double *gradient, void *d_) -> double {
-     mexObjectiveFunction &data = *(mexObjectiveFunction *)d_;
-     double f = data.evalFun(n, x, gradient);
+    mexObjectiveFunction &data = *(mexObjectiveFunction *)d_;
+    double f = data.evalFun(n, x, gradient);
+    if (data.stop)
+      nlopt_force_stop(data.opt);
+    return f;
+  };
 
-     if (data.stop)
-        nlopt_force_stop(data.opt);
-
-     // if (d->verbose)
-     //   mexPrintf("nlopt_optimize eval #%d: %g\n", d->neval, f);
-
-     return f;
+  // Hessian multiplier function lambda
+  auto pre = [](unsigned n, const double *x, const double *v, double *vpre, void *f_data) {
+    mexObjectiveFunction &data = *(mexObjectiveFunction *)f_data;
+    data.evalHessMultFcn(n, x, v, vpre);
+    if (data.stop)
+      nlopt_force_stop(data.opt);
   };
 
   if (data.hessmult_args[0]) // if HessMultFcn given, set both simultaneously
   {
-     // Hessian multiplier function lambda
-     auto pre = [](unsigned n, const double *x, const double *v, double *vpre, void *f_data) {
-        mexObjectiveFunction &data = *(mexObjectiveFunction *)f_data;
-        data.evalHessMultFcn(n, x, v, vpre);
-        if (data.stop)
-           nlopt_force_stop(data.opt);
-     };
-     nlopt_set_precond_min_objective(opt, f, pre, &data);
+    nlopt_set_precond_min_objective(opt, f, pre, &data);
   }
   else // else just objective function
   {
-     nlopt_set_min_objective(opt, f, &data);
+    nlopt_set_min_objective(opt, f, &data);
   }
 
+  return std::make_pair(f,pre);
+}
+
+void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
+{ // x = fminunc(fun,x0) (prevalidated inputs)
+  // create a new evaluator object
+  mexObjectiveFunction data(opt, (mxArray *)prhs[0], mxGetProperty(mxObj, 0, "HessMultFcn"), mxGetProperty(mxObj, 0, "OutputFun"));
+
+  // set up objective function (and Hessian Multiplier function if given)
+  auto funs = mexNLopt::config_obj_fun(opt,data);
+
+  // create output x vector from prevalidated initial x
+  plhs[0] = mxDuplicateArray(prhs[1]); 
+
+  // go!
+  mexNLopt::run_n_report(nlhs, plhs, opt, data);
+}
+
+void mexNLopt::fmincon(MEX_ACTION_ARGUMENTS) // nrhs=8, prhs=(fun,x0,con,mcon,coneq,mconeq,lb,ub)
+{
+  // work with a copy of the options so all the added constaints will not affect reruns
+  nlopt_opt temp_opt = nlopt_copy(opt);
+  std::unique_ptr<nlopt_opt_s, decltype(nlopt_destroy) *> onCleanup(temp_opt, nlopt_destroy); // auto-destroys temp_opt when done
+
+  // create a new evaluator object
+  mexObjectiveFunction data(temp_opt, (mxArray *)prhs[0], mxGetProperty(mxObj, 0, "HessMultFcn"), mxGetProperty(mxObj, 0, "OutputFun"));
+
+  // set up objective function (and Hessian Multiplier function if given)
+  auto funs = mexNLopt::config_obj_fun(temp_opt,data);
+
+  // set local_options if specified
+  set_local_optimizer(temp_opt, mxObj);
+
+  // configure constraints
+  double tol = mxGetScalar(mxGetProperty(mxObj,0,"ConstraintTolerance"));
+  
+  // keep nonlinear constraint lambdas in a vector
+  std::vector<nlopt_func>   con_funs;
+  std::vector<nlopt_mfunc> mcon_funs;
+  if (!mxIsEmpty(prhs[2])) // con
+  {
+    for (int i = 0; i<mxGetNumberOfElements(prhs[2]))
+    {
+      
+    }
+  }
+
+// typedef void (*nlopt_mfunc)(unsigned m, double *result,
+// 			    unsigned n, const double *x,
+// 			     double *gradient, /* NULL if not needed */
+// 			     void *func_data);
+
+
+  set_bounds(temp_opt, prhs[6], prhs[7]);
+
+  // create output x vector from prevalidated initial x
+  plhs[0] = mxDuplicateArray(prhs[1]); 
+
+  // go!
+  mexNLopt::run_n_report(nlhs, plhs, temp_opt, data);
+}
+
+void mexNLopt::set_bounds(nlopt_opt opt, const mxArray *mxLB, const mxArray *mxUB)
+{
+  if (!mxIsEmpty(mxLB) && nlopt_set_lower_bounds(opt, mxGetPr(mxLB))<0)
+      throw mexRuntimeError("badLowerBound","Setting lower bound triggered an error.");
+
+  if (!mxIsEmpty(mxUB) && nlopt_set_upper_bounds(opt, mxGetPr(mxUB))<0)
+      throw mexRuntimeError("badUpperBound","Setting upper bound triggered an error.");
+}
+
+void mexNLopt::run_n_report(int nlhs, mxArray *plhs[], nlopt_opt opt, mexObjectiveFunction &data)
+{
   // run init OutputFun if assigned
   data.evalOutputFun(true);
 
@@ -337,7 +401,23 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
   }
 }
 
-// NLOPT_EXTERN(nlopt_result) nlopt_set_local_optimizer(nlopt_opt opt, const nlopt_opt local_opt);
+void mexNLopt::set_local_optimizer(nlopt_opt opt, const mxArray *mxObj)
+{
+  mxArray *mxSubproblemAlgorithm = mxGetProperty(mxObj, 0, "SubproblemAlgorithm");
+  if (mxIsEmpty(mxSubproblemAlgorithm)) // none set
+    return;
+
+  // if set, guaranteed to be another nlopt.options scalar object, get the mexNLopt object
+  mexNLopt &obj = mexObjectHandle<mexNLopt>::getObject(mxGetProperty(mxSubproblemAlgorithm, 0, "backend"));
+
+  // check to make sure the dimension matches
+  if (nlopt_get_dimension(opt) != nlopt_get_dimension(obj.opt))
+    throw mexRuntimeError("invalidSubproblem", "Subproblem dimension does not match that of the main problem.");
+
+  // set the algorithm as sub
+  if (nlopt_set_local_optimizer(opt, obj.opt) < 0)
+    throw mexRuntimeError("unknownError", "nlopt_set_local_optimizer() failed.");
+}
 
 // NLOPT_EXTERN(nlopt_result) nlopt_set_default_initial_step(nlopt_opt opt, const double *x);
 
@@ -351,12 +431,6 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
 // NLOPT_EXTERN(nlopt_result) nlopt_set_precond_min_objective(nlopt_opt opt, nlopt_func f, nlopt_precond pre, void *f_data);
 
 /* constraints: */
-// NLOPT_EXTERN(nlopt_result) nlopt_set_lower_bounds(nlopt_opt opt, const double *lb);
-// NLOPT_EXTERN(nlopt_result) nlopt_set_lower_bounds1(nlopt_opt opt, double lb);
-// NLOPT_EXTERN(nlopt_result) nlopt_get_lower_bounds(const nlopt_opt opt, double *lb);
-// NLOPT_EXTERN(nlopt_result) nlopt_set_upper_bounds(nlopt_opt opt, const double *ub);
-// NLOPT_EXTERN(nlopt_result) nlopt_set_upper_bounds1(nlopt_opt opt, double ub);
-// NLOPT_EXTERN(nlopt_result) nlopt_get_upper_bounds(const nlopt_opt opt, double *ub);
 
 // NLOPT_EXTERN(nlopt_result) nlopt_remove_inequality_constraints(nlopt_opt opt);
 // NLOPT_EXTERN(nlopt_result) nlopt_add_inequality_constraint(nlopt_opt opt, nlopt_func fc, void *fc_data, double tol);
@@ -370,6 +444,7 @@ void mexNLopt::fminunc(MEX_ACTION_ARGUMENTS)
 
 const std::unordered_map<std::string, mexNLopt::action_fcn> mexNLopt::action_map =
     {
+        {"fmincon", &mexNLopt::fmincon},
         {"fminunc", &mexNLopt::fminunc},
         {"setFunctionStopValue", &mexNLopt::setStopVal},
         {"setFunctionAbsoluteTolerance", &mexNLopt::setFTolAbs},

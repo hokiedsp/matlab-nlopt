@@ -7,6 +7,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #define MEX_ACTION_ARGUMENTS const mxArray *mxObj, int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
 
@@ -159,7 +160,18 @@ private:
 
   // OPTIMIZATION ROUTINES
   void fminunc(MEX_ACTION_ARGUMENTS);
+  void fmincon(MEX_ACTION_ARGUMENTS);
+  void fminbnd(MEX_ACTION_ARGUMENTS);
+
+  // common routine to run and gather the outcome
+  static std::pair<nlopt_func,nlopt_precond> config_obj_fun(nlopt_opt opt, mexObjectiveFunction &data);
+  static void run_n_report(int nlhs, mxArray *plhs[], nlopt_opt opt, mexObjectiveFunction &data);
   
+  // routine to set subproblem options
+  static void set_local_optimizer(nlopt_opt opt, const mxArray *mxObj);
+
+  static void set_bounds(nlopt_opt opt, const mxArray *mxLB, const mxArray *mxUB);
+
   // map of actions
   typedef void (mexNLopt::*action_fcn)(MEX_ACTION_ARGUMENTS);
   static const std::unordered_map<std::string, action_fcn> action_map;

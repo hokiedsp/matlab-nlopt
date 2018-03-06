@@ -14,6 +14,7 @@ struct mexObjectiveFunction
   
   mexObjectiveFunction(nlopt_opt & optin, mxArray * mxFun, mxArray * mxHessMultFcn, mxArray * mxOutputFun);
   ~mexObjectiveFunction();
+
   double evalFun(unsigned n, const double *x, double *gradient);
   void evalHessMultFcn(unsigned n, const double *x, const double *v, double *vpre);
   bool evalOutputFun(bool init);

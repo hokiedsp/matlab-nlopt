@@ -15,6 +15,8 @@ h = line(x0(1),x0(2),'Marker','.','Color','k');
 options = nlopt.options('ln_neldermead',2,'OutputFun',@(x,optimvalues,state)outfun(x,optimvalues,state,h));
 [x, fval, flag, output] = nlopt.fminunc(anonrosen,x0,options);
 
+line(x(1),x(2),'Marker','o','LineStyle','none','Color','w','MarkerFaceColor','w')
+
 h1 = line(x0(1),x0(2),'Marker','.','Color','r','LineStyle','--');
 options = nlopt.options('ld_lbfgs',2,'OutputFun',@(x,optimvalues,state)outfun(x,optimvalues,state,h1));
 [x, fval, flag, output] = nlopt.fminunc(@rosenbrockwithgrad,x0,options);
@@ -24,9 +26,12 @@ options = nlopt.options('ld_ccsaq',2,'HessMultFcn',@rosenbrockHessMult,...
    'OutputFun',@(x,optimvalues,state)outfun(x,optimvalues,state,h2));
 [x, fval, flag, output] = nlopt.fminunc(@rosenbrockwithgrad,x0,options);
 
-line(x(1),x(2),'Marker','o','LineStyle','none','Color','w','MarkerFaceColor','w')
+% h3 = line(x0(1),x0(2),'Marker','.','Color','m','LineStyle',':');
+% options = nlopt.options('g_mlsl',2,'SubproblemAlgorithm',nlopt.options('ld_lbfgs',2,'subproblem'),...
+%    'OutputFun',@(x,optimvalues,state)outfun(x,optimvalues,state,h3));
+% [x, fval, flag, output] = nlopt.fminunc(@rosenbrockwithgrad,x0,options);
 
-legend([h h1],'Nelder-Mead', 'Limited-memory BFGS')
+legend([h h1 h2],'Nelder-Mead', 'LBFGS', 'CCSAQ')
 
 
 function stop = outfun(x,~,~,h)
