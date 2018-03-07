@@ -1,4 +1,4 @@
-function varargout = fmincon(fun,x0,A,b,Aeq,beq,lb,ub,C,Ceq,options)
+function varargout = fmincon(fun,x0,A,b,Aeq,beq,x1,x2,C,Ceq,options)
 %nlopt.FMINCON Find constrained minimum of a multivariable function
 %   nlopt.FMINCON attempts to solve problems of the form:
 %
@@ -129,33 +129,38 @@ if nargin > 2
    if sum(tf)==1
       error('Linear inequality constraints must have both A and b.');
    end
-   if tf(1)
-      validateattributes(A,{'double'},{'2d','ncol',n,'finite'},'nlopt.fmincon','A');
+   if ~tf(1)
+      validateattributes(A,{'double'},{'2d','ncols',n,'finite'},'nlopt.fmincon','A');
       ncon = size(A,1);
       validateattributes(b,{'double'},{'column','nrows',ncon,'finite'},'nlopt.fmincon','b');
       mode(1) = true;
    end
    
+  ub = [];
+  lb = [];
+
    if nargin>4
       tf = [isempty(Aeq) nargin<6||isempty(beq)];
       if sum(tf)==1
          error('Linear equality constraints must have both Aeq and beq.');
       end
-      if tf(1)
-         validateattributes(Aeq,{'double'},{'2d','ncol',n,'finite'},'nlopt.fmincon','Aeq');
+      if ~tf(1)
+         validateattributes(Aeq,{'double'},{'2d','ncols',n,'finite'},'nlopt.fmincon','Aeq');
          ncon = size(Aeq,1);
          validateattributes(beq,{'double'},{'column','nrows',ncon,'finite'},'nlopt.fmincon','beq');
          mode(2) = true;
       end
       
       if nargin>6
-         if ~isempty(lb)
-            validateattributes(lb,{'double'},{'vector','numel',n,'nonnan'},'nlopt.fmincon','lb');
+         if ~isempty(x1)
+            validateattributes(x1,{'double'},{'vector','numel',n,'nonnan'},'nlopt.fmincon','lb');
+            lb = x1;
          end
          
          if nargin>7
-            if ~isempty(ub)
-               validateattributes(ub,{'double'},{'vector','numel',n,'nonnan'},'nlopt.fmincon','ub');
+            if ~isempty(x2)
+               validateattributes(x2,{'double'},{'vector','numel',n,'nonnan'},'nlopt.fmincon','ub');
+               ub = x2;
             end
             
             if nargin>8
@@ -170,13 +175,13 @@ if nargin > 2
                   end
                end
             end
-         else
-            ub = [];
          end
-      else
-         lb = [];
       end
    end
+end
+
+if ~any(mode) && isempty([ub(:) lb(:)])
+   error('One of the constraint must be non-empty. Use nlopt.fminunc() for a unconstrained problem.');
 end
 
 if nargin>10
@@ -188,7 +193,7 @@ else
       [~,~] = fun(x0);
       options = nlopt.options('LD_SLSQP',n);
    catch
-      options = nlopt.options('gn_isres',n);
+      options = nlopt.options('LN_COBYLA',n);
    end
 end
 
@@ -213,8 +218,8 @@ if mode(2) %Aeq&beq
 end
 if mode(3) % C
    try
-      val = C(x);
-      assert(isdouble(val)&&isvector(val))
+      val = C(x0(:));
+      assert(isa(val,'double')&&isvector(val))
       if isscalar(val)
          con{end+1} = C;
       else
@@ -226,8 +231,8 @@ if mode(3) % C
 end
 if mode(4) % C
    try
-      val = Ceq(x);
-      assert(isdouble(val)&&isvector(val))
+      val = Ceq(x0(:));
+      assert(isa(val,'double')&&isvector(val))
       if isscalar(val)
          coneq{end+1} = Ceq;
       else
