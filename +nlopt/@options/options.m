@@ -24,7 +24,7 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
    
    properties
       HessMultFcn % W = HessMultFcn(H,v);
-%       Display %
+      %       Display %
       OutputFun % function_handle withs signature: stop = outfun(x,optimValues,state)
       
       SubproblemAlgorithm  % scalar nlopt.options for local optimization configuration (used only by some global optimization routines)
@@ -42,20 +42,20 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
    
    methods
       function obj = options(algorithm, dim, varargin)
+         narginchk(2,inf);
          validateattributes(algorithm,{'char'},{'row'},mfilename,'algorithm');
          validateattributes(dim,{'double'},{'scalar','integer','positive'},mfilename,'dim');
          
          % instantiate mex backend
-         obj.mexfcn(obj, algorithm, dim);
-
+         obj.mexfcn(obj, lower(algorithm), dim);
+         
          % append default stopping condition
-         if nargin>2
-            if strcmpi(varargin{1},'subproblem')
-               varargin(1) = [];
-            else
-               varargin = [{'FunctionTolerance',1e-6,'StepTolerance',1e-6,...
-                  'MaxFunctionEvaluations',100*dim},varargin];
-            end
+         issub = nargin>2 && strcmpi(varargin{1},'subproblem');
+         if issub
+            varargin(1) = [];
+         else
+            varargin = [{'FunctionTolerance',1e-6,'StepTolerance',1e-6,...
+               'MaxFunctionEvaluations',100*dim},varargin];
          end
          
          % set properties
@@ -247,21 +247,27 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
       end
       
       function set.HessMultFcn(obj,val)
-         validateattributes(val,{'function_handle'},{'scalar'});
+         if ~isempty(val)
+            validateattributes(val,{'function_handle'},{'scalar'});
+         end
          obj.HessMultFcn = val;
       end
       
       function set.OutputFun(obj,val)
          % stop = outfun(x,optimValues,state);
-         validateattributes(val,{'function_handle'},{'scalar'});
+         if ~isempty(val)
+            validateattributes(val,{'function_handle'},{'scalar'});
+         end
          obj.OutputFun = val;
       end
       
       function set.SubproblemAlgorithm(obj,val)
-         validateattributes(val,{'nlopt.options'},{'scalar'});
+         if ~isempty(val)
+            validateattributes(val,{'nlopt.options'},{'scalar'});
+         end
          obj.SubproblemAlgorithm = val;
       end
-
+      
       function set.ConstraintTolerance(obj,val)
          validateattributes(val,{'double'},{'scalar','nonnegative','finite'});
          obj.ConstraintTolerance = val;
@@ -269,9 +275,9 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
    end
    
    methods (Hidden)
-      function varargout = fminunc(obj,fun,x0)
+      function varargout = fminunc(obj,varargin)
          % to be called only by nlopt.fminunc
-         [varargout{1:nargout}] = obj.mexfcn(obj,'fminunc',fun,x0);
+         [varargout{1:nargout}] = obj.mexfcn(obj,'fminunc',varargin{:});
          if nargout>3
             varargout{4} = struct('funccount',varargout{4},'Algorithm',obj.Algorithm);
          end
@@ -280,6 +286,14 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
       function varargout = fmincon(obj,varargin)
          % to be called only by nlopt.fmincon
          [varargout{1:nargout}] = obj.mexfcn(obj,'fmincon',varargin{:});
+         if nargout>3
+            varargout{4} = struct('funccount',varargout{4},'Algorithm',obj.Algorithm);
+         end
+      end
+      
+      function varargout = fminbnd(obj,varargin)
+         % to be called only by nlopt.fminbnd
+         [varargout{1:nargout}] = obj.mexfcn(obj,'fminbnd',varargin{:});
          if nargout>3
             varargout{4} = struct('funccount',varargout{4},'Algorithm',obj.Algorithm);
          end

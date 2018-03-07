@@ -277,6 +277,7 @@ void mexNLopt::fmincon(MEX_ACTION_ARGUMENTS) // nrhs=8, prhs=(fun,x0,con,mcon,co
 
   // keep nonlinear constraint lambdas in a vector
   std::vector<mexConstraintFunction> con_funs;
+  con_funs.reserve(mxGetNumberOfElements(prhs[2]) + mxGetM(prhs[3]) + mxGetNumberOfElements(prhs[4]) + mxGetM(prhs[5]));
   if (!mxIsEmpty(prhs[2])) // con
   {
     for (int i = 0; i < mxGetNumberOfElements(prhs[2]); ++i)
@@ -318,13 +319,38 @@ void mexNLopt::fmincon(MEX_ACTION_ARGUMENTS) // nrhs=8, prhs=(fun,x0,con,mcon,co
       unsigned m = (unsigned)mxGetScalar(mxGetCell(prhs[5], i + n));
       if (m > tol.size())
         tol.resize(m, tol.front());
-      if (nlopt_add_inequality_mconstraint(temp_opt, m, &mexConstraintFunction::vcon_fun, &(con_funs.back()), tol.data()) < 0)
+      if (nlopt_add_equality_mconstraint(temp_opt, m, &mexConstraintFunction::vcon_fun, &(con_funs.back()), tol.data()) < 0)
         throw mexRuntimeError("invalidEqualityConstraint", "Could not complete nlopt_add_equality_mconstraint() call");
     }
   }
   // NLOPT_EXTERN(nlopt_result) nlopt_add_precond_inequality_constraint(nlopt_opt opt, nlopt_func fc, nlopt_precond pre, void *fc_data, double tol);
   // NLOPT_EXTERN(nlopt_result) nlopt_add_precond_equality_constraint(nlopt_opt opt, nlopt_func h, nlopt_precond pre, void *h_data, double tol);
 
+  set_bounds(temp_opt, prhs[6], prhs[7]);
+
+  // create output x vector from prevalidated initial x
+  plhs[0] = mxDuplicateArray(prhs[1]);
+
+  // go!
+  mexNLopt::run_n_report(nlhs, plhs, temp_opt, data);
+}
+
+void mexNLopt::fminbnd(MEX_ACTION_ARGUMENTS) // nrhs=8, prhs=(fun,x0,lb,ub)
+{
+  // work with a copy of the options so all the added constaints will not affect reruns
+  nlopt_opt temp_opt = nlopt_copy(opt);
+  std::unique_ptr<nlopt_opt_s, decltype(nlopt_destroy) *> onCleanup(temp_opt, nlopt_destroy); // auto-destroys temp_opt when done
+
+  // create a new evaluator object
+  mexObjectiveFunction data(temp_opt, (mxArray *)prhs[0], mxGetProperty(mxObj, 0, "HessMultFcn"), mxGetProperty(mxObj, 0, "OutputFun"));
+
+  // set up objective function (and Hessian Multiplier function if given)
+  mexNLopt::config_obj_fun(temp_opt, data);
+
+  // set local_options if specified
+  set_local_optimizer(temp_opt, mxObj);
+
+  // set bounds
   set_bounds(temp_opt, prhs[6], prhs[7]);
 
   // create output x vector from prevalidated initial x
@@ -438,6 +464,7 @@ const std::unordered_map<std::string, mexNLopt::action_fcn> mexNLopt::action_map
     {
         {"fmincon", &mexNLopt::fmincon},
         {"fminunc", &mexNLopt::fminunc},
+        {"fminbnd", &mexNLopt::fminbnd},
         {"setFunctionStopValue", &mexNLopt::setStopVal},
         {"setFunctionAbsoluteTolerance", &mexNLopt::setFTolAbs},
         {"setMaxFunctionEvaluations", &mexNLopt::setMaxEval},
