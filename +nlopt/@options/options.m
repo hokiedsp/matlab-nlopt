@@ -1,8 +1,56 @@
 classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.CustomDisplay
-   %nlopt.options   NLopt option class
-   %
-   %
-   %   See also
+%nlopt.options   Create/modify NLopt options
+%
+%   NLOPT.OPTIONS(ALGORITHM,N) creates and returns an NLopt options 
+%   object for a problem with N unknown variables with the option parameters
+%   set to the default values. For a list of valid optimization algorithms, 
+%   enter
+%     NLOPT.OPTIONS.getAlgorithms
+%   which lists all the algorithms supported by NLopt.
+%
+%   Unlike the Matlab Optimization Toolbox counterpart, the dimensionality
+%   (i.e., the number of variables) of the problem at hand must be specified.
+%
+%   Any NLOPT.OPTIONS object can be used for any of NLOPT.FMINUNC, NLOPT.FMINCON
+%   and NLOPT.FMINBND as long as the NLopt algorithm supports the specified 
+%   constraint formats. See the official NLopt documentation for the full 
+%   descriptions of the algorithms
+%
+%   NLOPT.OPTIONS(ALGORITHM,DIMENSION,'PARAM1',VALUE1,...) creates default
+%   NLopt options for ALGORITHM  with the named parameters altered with
+%   the specified values. Alternately the parameters can later be changed 
+%   via the standard dot class property accessing method.
+%
+%   NLOPT.OPTIONS Properties:
+%   Name                        Descriptions
+%   -------------------------------------------------------------------------
+%   Algorithm                 - (read-only) NLopt algorithm name
+%   Dimension                 - (read-only) Number of unknowns
+%
+%   FunctionTolerance         - Absolute tolerance on function value (FTolAbs)
+%   FunctionRelativeTolerance - Relative tolerance on function value (FTolRel)
+%   StepTolerance             - Absolute tolerances on optimization parameters (XTolAbs)
+%   StepRelativeTolerance     - Relative tolerance on optimization parameters (XTolRel)
+%   MaxFunctionEvaluations    - Maximum number of function evaluations (MaxFunEvals)
+%   MaxEvaluationDuration     - Maximum duration in seconds to wait (MaxEvalTime)
+%   ObjectiveLimit            - Algorithm stops when an objective value of at least
+%                               stopval is found (StopVal)
+%   ConstraintTolerance       - Absolute tolerance for inequality or equality constraint value
+%
+%   Population                - Size of initial population of random points for stochastic 
+%                               search algorithms
+%   VectorStorage             - Memory depth of past gradient values
+%   InitialStepSize           - Initial step size to perturb x for derivative-free algorithms
+%   SubproblemAlgorithm       - Algorithm options for local optimization configuration
+%   HessMultFcn               - Hessian multiplier function: [Hv,dHv] = HessMultFcn(x,v)
+%
+%   OutputFun                 - Called after every function eval if specified: 
+%                               stop = outfun(x,optimValues,state)
+%
+%   For more complete descriptions of these options, see https://nlopt.readthedocs.io/en/latest/NLopt_Reference
+%   The NLopt option names are given in parenthesis if they are substantially different.
+%
+%   See also nlopt.options.getAlgorithms, nlopt.fminunc, nlopt.fmincon, nlopt.fminbnd
    
    properties (Dependent,SetAccess=private)
       Algorithm
@@ -209,7 +257,7 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
          obj.mexfcn(obj,'setMaxEvaluationDuration',val);
       end
       function val = get.Population(obj)
-         val = obj.mexfcn(obj,'getMaxEvaluationDuration');
+         val = obj.mexfcn(obj,'getPopulation');
          if val==0
             val = 'auto';
          end
@@ -221,7 +269,7 @@ classdef options < matlab.mixin.Copyable & matlab.mixin.SetGet & matlab.mixin.Cu
          catch
             validateattributes(val,{'double'},{'scalar','positive','integer'});
          end
-         obj.mexfcn(obj,'setVectorStorage',val);
+         obj.mexfcn(obj,'setPopulation',val);
       end
       function val = get.VectorStorage(obj)
          val = obj.mexfcn(obj,'getVectorStorage');
