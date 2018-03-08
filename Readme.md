@@ -8,11 +8,11 @@ Also this project serves as an example of how to use C++ wrapper function `mexOb
 
 ## Content
 * [Build & Installation](build-installation)
-* [`nlopt.fminunc`: Unconstrained nonlinear minimization](nloptfminunc-unconstrained-nonlinear-minimization)
-* [`nlopt.fmincon`: Constrained nonlinear minimization with inequality, equality, and bound constraints](nloptfmincon-constrained_-nonlinear-minimization-with-inequality-equality-and-bound-constraints)
-* [`nlopt.fminbnd`: Bounded global nonlinear minimization](nloptfminbnd-bounded-global-nonlinear-minimization)
-* [`nlopt.options`: Object to manage NLopt options](nloptoptions-object-to-manage-nlopt-options)
-* [Useful Links](useful-links)
+* [`nlopt.fminunc`: Unconstrained nonlinear minimization](#nloptfminunc-unconstrained-nonlinear-minimization)
+* [`nlopt.fmincon`: Constrained nonlinear minimization with inequality, equality, and bound constraints](#nloptfmincon-constrained_-nonlinear-minimization-with-inequality-equality-and-bound-constraints)
+* [`nlopt.fminbnd`: Bounded global nonlinear minimization](#nloptfminbnd-bounded-global-nonlinear-minimization)
+* [`nlopt.options`: Object to manage NLopt options](#nloptoptions-object-to-manage-nlopt-options)
+* [Useful Links](#useful-links)
 
 ## Build & Installation
 
