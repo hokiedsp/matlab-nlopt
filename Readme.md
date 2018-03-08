@@ -7,7 +7,7 @@ This project aims to create a set of NLopt-based MATLAB functions which are argu
 Also this project serves as an example of how to use C++ wrapper function `mexObjectHandler` in [my matlab-mexutils project](https://github.com/hokiedsp/matlab-mexutils).
 
 ## Content
-* [Build & Installation](build--installation)
+* [Build & Installation](#build-installation)
 * [`nlopt.fminunc`: Unconstrained nonlinear minimization](#nloptfminunc-unconstrained-nonlinear-minimization)
 * [`nlopt.fmincon`: Constrained nonlinear minimization with inequality, equality, and bound constraints](#nloptfmincon-constrained_-nonlinear-minimization-with-inequality-equality-and-bound-constraints)
 * [`nlopt.fminbnd`: Bounded global nonlinear minimization](#nloptfminbnd-bounded-global-nonlinear-minimization)
