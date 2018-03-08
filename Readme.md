@@ -4,7 +4,7 @@ A Matlab wrapper package of [**NLopt Nonlinear Optimization Library**](https://g
 
 This project aims to create a set of NLopt-based MATLAB functions which are argument-compatible with the counterparts in Mathwork's Optimization Toolbox, namely: `nlopt.fminunc`, `nlopt.fmincon`, and `nlopt.fminbnd`.
 
-Also this project serves as an example of how to use C++ wrapper function `mexObjectHandler` in [my matlab-mexutils project].
+Also this project serves as an example of how to use C++ wrapper function `mexObjectHandler` in [my matlab-mexutils project](https://github.com/hokiedsp/matlab-mexutils).
 
 ## Content
 * [Build & Installation](build_installation)
