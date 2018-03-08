@@ -7,7 +7,7 @@ list (APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 option (BUILD_NLOPT_LIBS "Build NLopt as a shared library and place it along the MEX file" ON)
 set(NLOPT_LIB_DIR "" CACHE PATH "If NLopt not built together, specify the location of NLopt library directory")
-set(NLOPT_INCLUDE_DIR "" CACHE PATH "If NLopt not built together, specify the lcoation of NLopt include directory")
+set(NLOPT_INCLUDE_DIR "" CACHE PATH "If NLopt not built together, specify the location of NLopt include directory")
 
 # Set the default installation directory
 if (WIN32)
