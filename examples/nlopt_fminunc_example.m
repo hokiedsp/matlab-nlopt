@@ -1,5 +1,6 @@
 clear; close all; drawnow
 
+% If using derivative-free algorithms, an anonymouse function suffices
 anonrosen = @(x)(100*(x(2,:) - x(1,:).^2).^2 + (1-x(1,:)).^2);
 x0 = [-1;2];
 
@@ -33,12 +34,13 @@ options = nlopt.options('ld_ccsaq',2,'HessMultFcn',@rosenbrockHessMult,...
 
 legend([h h1 h2],'Nelder-Mead', 'LBFGS', 'CCSAQ')
 
-
+% OuputFun function to plot the algorithm progress (after every objfun evaluation)
 function stop = outfun(x,~,~,h)
   set(h,'XData',[h.XData x(1)],'YData',[h.YData x(2)]);
   stop = false;
 end
 
+% Objective function with gradients
 function [f,g] = rosenbrockwithgrad(x)
 % Calculate objective f
 f = 100*(x(2,:) - x(1,:).^2).^2 + (1-x(1,:)).^2;
@@ -49,6 +51,7 @@ if nargout > 1 % gradient required
 end
 end
 
+% Hessian function
 function H = rosenbrockHessMult(x,g)
    H = [1200*x(1)^2-400*x(2)+2, -400*x(1);
       -400*x(1), 200]*g;
