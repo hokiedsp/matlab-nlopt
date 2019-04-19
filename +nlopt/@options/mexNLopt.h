@@ -9,6 +9,10 @@
 #include <unordered_map>
 #include <utility>
 
+#ifndef MX_CURRENT_API_VER
+#define mxIsScalar(A) (mxGetNumberOfElements(A)==1)
+#endif
+
 #define MEX_ACTION_ARGUMENTS const mxArray *mxObj, int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

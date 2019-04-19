@@ -5,6 +5,10 @@
 #include <algorithm>
 #include <stdexcept>
 
+#ifndef MX_CURRENT_API_VER
+#define mxIsScalar(A) (mxGetNumberOfElements(A)==1)
+#endif
+
 mexConstraintFunction::mexConstraintFunction(mxArray *mxFun, mexObjectiveFunction &data)
     : prhs{mxFun, mxCreateDoubleMatrix(nlopt_get_dimension(data.opt), 1, mxREAL)}, // {fun, x}
       opt(data.opt), lasterror(data.lasterror), stop(data.stop)

@@ -5,6 +5,10 @@
 #include <algorithm>
 #include <stdexcept>
 
+#ifndef MX_CURRENT_API_VER
+#define mxIsScalar(A) (mxGetNumberOfElements(A)==1)
+#endif
+
 mexObjectiveFunction::mexObjectiveFunction(nlopt_opt &optin, mxArray *mxFun, mxArray *mxHessMultFcn, mxArray *mxOutputFun)
     : prhs{mxFun, mxCreateDoubleMatrix(nlopt_get_dimension(optin), 1, mxREAL)}, // {fun, x}
       opt(optin),                                                               // nlopt_opt
