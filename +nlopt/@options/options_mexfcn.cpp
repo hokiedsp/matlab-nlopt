@@ -335,7 +335,7 @@ void mexNLopt::fmincon(MEX_ACTION_ARGUMENTS) // nrhs=8, prhs=(fun,x0,con,mcon,co
   mexNLopt::run_n_report(nlhs, plhs, temp_opt, data);
 }
 
-void mexNLopt::fminbnd(MEX_ACTION_ARGUMENTS) // nrhs=8, prhs=(fun,x0,lb,ub)
+void mexNLopt::fminbnd(MEX_ACTION_ARGUMENTS) // nrhs=4, prhs=(fun,x0,lb,ub)
 {
   // work with a copy of the options so all the added constaints will not affect reruns
   nlopt_opt temp_opt = nlopt_copy(opt);
@@ -351,7 +351,7 @@ void mexNLopt::fminbnd(MEX_ACTION_ARGUMENTS) // nrhs=8, prhs=(fun,x0,lb,ub)
   set_local_optimizer(temp_opt, mxObj);
 
   // set bounds
-  set_bounds(temp_opt, prhs[6], prhs[7]);
+  set_bounds(temp_opt, prhs[2], prhs[3]);
 
   // create output x vector from prevalidated initial x
   plhs[0] = mxDuplicateArray(prhs[1]);
@@ -362,6 +362,8 @@ void mexNLopt::fminbnd(MEX_ACTION_ARGUMENTS) // nrhs=8, prhs=(fun,x0,lb,ub)
 
 void mexNLopt::set_bounds(nlopt_opt opt, const mxArray *mxLB, const mxArray *mxUB)
 {
+  double *lo = mxGetPr(mxLB);
+
   if (!mxIsEmpty(mxLB) && nlopt_set_lower_bounds(opt, mxGetPr(mxLB)) < 0)
     throw mexRuntimeError("badLowerBound", "Setting lower bound triggered an error.");
 
