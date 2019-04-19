@@ -12,3 +12,12 @@ install(TARGETS mexfcn RUNTIME DESTINATION "${MATLAB_NLOPT_TOOLBOX_DIR}/${DstRel
 if (WIN32 AND BUILD_NLOPT_LIBS) 
   install(FILES "${NLOPT_ROOT}/bin/nlopt.dll" DESTINATION "${MATLAB_NLOPT_TOOLBOX_DIR}/${DstRelativePath}")
 endif()
+
+if(${Matlab_VERSION_STRING_INTERNAL} VERSION_LESS "8.4")
+  set(OPTIONS_M "options.m.R2014a")
+else()
+  set(OPTIONS_M "options.m")
+endif()
+install(FILES ${OPTIONS_M}
+  DESTINATION "${MATLAB_NLOPT_TOOLBOX_DIR}/${DstRelativePath}"
+  RENAME "options.m")

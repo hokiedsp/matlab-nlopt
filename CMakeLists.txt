@@ -102,7 +102,11 @@ if(WIN32 AND MSVC)
 endif()
 
 # add the install procedures
-install(DIRECTORY +nlopt DESTINATION ${MATLAB_NLOPT_TOOLBOX_DIR} FILES_MATCHING PATTERN "*.m" PATTERN) # copy all the package m-files
+install(DIRECTORY +nlopt 
+        DESTINATION ${MATLAB_NLOPT_TOOLBOX_DIR} 
+        FILES_MATCHING
+          PATTERN "*.m"
+          PATTERN "+nlopt/@options/options.m" EXCLUDE) # copy all the package m-files
 
 # first we can indicate the documentation build as an option and set it to ON by default
 # option(BUILD_DOC "Build documentation" ON)
