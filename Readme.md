@@ -27,25 +27,14 @@ BUILD_NLOPT_LIBS | ON | Also build and install NLopt (as a shared library). For 
 NLOPT_LIB_DIR | "" | If NLopt already not built together and installed, specify the location of NLopt library directory
 NLOPT_INCLUDE_DIR | "" | If NLopt not built together, specify the location of NLopt include directory
 
-The default installation path is set to the user's `MATLAB` folder which is defined as
+The default installation path is set to the user's `MATLAB_USER_DIR` folder which is defined as
 
 | Platform | Path |
----|---
+|---|---|
 | Windows | $ENV{USERPROFILE}/Documents/MATLAB |
 | Others | $ENV{home}/Documents/MATLAB |
 
-For example, under a Windows' JohnDoe user account, the files will be installed at:
-
-```
-C:/Users/Documents/MATLAB/nlopt
-```
-
-To install the packaged m-functions and example m-files separately, specify MATLAB_NLOPT_TOOLBOX_DIR and MATLAB_NLOPT_EXAMPLE_DIR.
-
-The main packaged functions are installed on MATLAB_NLOPT_TOOLBOX_DIR
-
-
-The default intallation path for this project is set to `<MATLAB Users Directory>/nlopt`
+For example, under a Windows' JohnDoe user account, the files will be installed at `C:/Users/Documents/MATLAB/nlopt` if default MATLAB_NLOPT_TOOLBOX_DIR and MATLAB_NLOPT_EXAMPLE_DIR are used. To install the packaged m-functions and example m-files on separate subdirectories, specify MATLAB_NLOPT_TOOLBOX_DIR and MATLAB_NLOPT_EXAMPLE_DIR.
 
 ## `nlopt.fminunc`: Unconstrained nonlinear minimization
 
