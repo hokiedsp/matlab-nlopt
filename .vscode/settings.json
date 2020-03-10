@@ -48,6 +48,5 @@
     "map": "cpp",
     "unordered_map": "cpp",
     "tuple": "cpp"
-  },
-  "cmake.installPrefix": "D:/Users/tikuma/Documents/MATLAB/toolbox"
+  }
 }
