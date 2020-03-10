@@ -79,7 +79,7 @@ void mexConstraintFunction::evalVecFun(unsigned m, unsigned n, const double* x, 
 
   // run the objective function
   if (call_matlab_feval_with_trap(gradient ? 2 : 1, plhs, n, x) ||       // trapped an error (incl. invalid # of arguments)
-      !(mxGetM(plhs[0]) == 1 || mxGetN(plhs[0]) == 1) || mxGetNumberOfElements(plhs[0]) != n) // must return a real double scalar value
+      !(mxGetM(plhs[0]) == 1 || mxGetN(plhs[0]) == 1) || mxGetNumberOfElements(plhs[0]) != m) // must return a real double scalar value
     goto objfcn_failed;
 
   // prepare the function value to return
